@@ -1107,6 +1107,7 @@ char* CStat::sRepartitionInfo(T_dynamicalRepartition * tabRepartition,
     return(repartitionInfo);
 }
 
+// agranig: TODO: override this for mqtt output!?
 void CStat::dumpData ()
 {
     long   localElapsedTime, globalElapsedTime ;

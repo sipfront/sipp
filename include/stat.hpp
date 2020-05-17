@@ -294,7 +294,7 @@ public:
     /**
      * Destructor.
      */
-    ~CStat ();
+    virtual ~CStat ();
 
 
     /**
@@ -370,19 +370,19 @@ public:
     /* define the file name to use to dump statistic in file */
     void setFileName(const char* name);
     void setFileName(const char* name, const char* extension);
-    void initRtt(const char* name, const char* extension, unsigned long P_value);
+    virtual void initRtt(const char* name, const char* extension, unsigned long P_value);
 
     /**
      * Dump data periodically in the file M_FileName
      */
-    void dumpData ();
+    virtual void dumpData ();
 
-    void dumpDataRtt ();
+    virtual void dumpDataRtt ();
 
     /**
      * initialize the class variable member
      */
-    int init();
+    virtual int init();
 
     /**
      * computeDiffTimeInMs.
@@ -426,7 +426,7 @@ public:
     void validateRtds();
     int nRtds();
 
-private:
+protected:
     unsigned long long        M_counters[E_NB_COUNTER];
     static unsigned long long M_G_counters[E_NB_G_COUNTER - E_NB_COUNTER];
 

@@ -678,6 +678,7 @@ scenario::scenario(char * filename, int deflt)
         }
     }
 
+    // agranig: TODO: add a stats factory to return the correct class instance?
     stats = new CStat();
     allocVars = new AllocVariableTable(userVariables);
 

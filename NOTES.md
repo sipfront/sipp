@@ -16,6 +16,8 @@
 
 * what's -ip_field doing and is it useful?
 
+* -trace_rtt for RTT is different than stats, look if it's valuable
+
 ## Useful startup options
 
 * use -aa by default?
