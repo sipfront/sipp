@@ -55,7 +55,7 @@ void MQTTStat::initRtt(const char* P_name, const char* P_extension,
                     unsigned long P_report_freq_dumpRtt)
 {
     // TODO: can we skip extension/pid in mqtt context? do we need other method for that?
-    
+
     int sizeOf, sizeOfExtension;
 
     if(P_name != NULL) {
