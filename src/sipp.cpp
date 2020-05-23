@@ -114,6 +114,7 @@ struct sipp_option {
 #define SIPP_OPTION_LFOVERWRITE   37
 #define SIPP_OPTION_PLUGIN        38
 #define SIPP_OPTION_NEED_SCTP     39
+#define SIPP_OPTION_NEED_MQTT     40
 #define SIPP_HELP_TEXT_HEADER    255
 
 /* Put each option, its help text, and type in this table. */
@@ -388,6 +389,22 @@ struct sipp_option options_table[] = {
     {"ringbuffer_files", "How many error, message, shortmessage and calldebug files should be kept after rotation?", SIPP_OPTION_INT, &ringbuffer_files, 1},
     {"ringbuffer_size", "How large should error, message, shortmessage and calldebug files be before they get rotated?", SIPP_OPTION_LONG_LONG, &ringbuffer_size, 1},
     {"max_log_size", "What is the limit for error, message, shortmessage and calldebug file sizes.", SIPP_OPTION_LONG_LONG, &max_log_size, 1},
+
+#ifdef USE_MQTT
+    {"mqtt_stats", "Use MQTT instead of CSV for stats.", SIPP_OPTION_BOOL, &mqtt_stats, 1},
+    {"mqtt_stats_topic", "Set the MQTT topic for publishing stats. Default is '/sipp/stats'", SIPP_OPTION_STRING, &mqtt_stats_topic, 1},
+    {"mqtt_ctrl", "Use MQTT instead of UDP for remote control.", SIPP_OPTION_BOOL, &mqtt_ctrl, 1},
+    {"mqtt_ctrl_topic", "Set the MQTT topic for subscribing to control commands. Default is '/sipp/ctrl'", SIPP_OPTION_STRING, &mqtt_ctrl_topic, 1},
+    {"mqtt_host", "Set the hostname of the MQTT broker. Default is 'localhost'", SIPP_OPTION_STRING, &mqtt_host, 1},
+    {"mqtt_port", "Set the port number of the MQTT broker. Default is 1883.", SIPP_OPTION_INT, &mqtt_port, 1},
+#else
+    {"mqtt_stats", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_stats_topic", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_ctrl", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_ctrl_topic", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_host", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_port", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+#endif
 
 };
 
@@ -1556,6 +1573,10 @@ int main(int argc, char *argv[])
             case SIPP_OPTION_NEED_SSL:
                 CHECK_PASS();
                 ERROR("OpenSSL is required for the %s option.", argv[argi]);
+                break;
+            case SIPP_OPTION_NEED_MQTT:
+                CHECK_PASS();
+                ERROR("MQTT support is required for the %s option.", argv[argi]);
                 break;
             case SIPP_OPTION_MAX_SOCKET:
                 REQUIRE_ARG();

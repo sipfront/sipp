@@ -44,7 +44,7 @@ make
 There are several optional flags to enable features (SIP-over-TLS, SIP-over-SCTP, media playback from PCAP files and the GNU Statistical libbraries for random distributions):
 
 ```
-cmake . -DUSE_SSL=1 -DUSE_SCTP=1 -DUSE_PCAP=1 -DUSE_GSL=1
+cmake . -DUSE_SSL=1 -DUSE_SCTP=1 -DUSE_PCAP=1 -DUSE_GSL=1 -DUSE_MQTT=1
 ```
 
 ## Static builds

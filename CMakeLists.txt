@@ -23,6 +23,7 @@ option(USE_SSL "Build with SIPS support" OFF)
 option(USE_SCTP "Build with SCTP support" OFF)
 option(USE_PCAP "Build with PCAP playback support" OFF)
 option(USE_GSL "Build with improved statistical support" ON)
+option(USE_MQTT "Build with MQTT support" OFF)
 
 file(GLOB all_SRCS
   "${PROJECT_SOURCE_DIR}/src/*.cpp"
@@ -62,6 +63,11 @@ if(NOT USE_PCAP)
     "${PROJECT_SOURCE_DIR}/src/send_packets.c")
 endif(NOT USE_PCAP)
 
+if(NOT USE_MQTT)
+  list(REMOVE_ITEM all_SRCS
+    "${PROJECT_SOURCE_DIR}/src/mqtt_stat.cpp")
+endif(NOT USE_MQTT)
+
 if(USE_SSL)
   add_definitions("-DUSE_TLS -DUSE_OPENSSL")
 endif()
@@ -80,6 +86,10 @@ endif(USE_GSL)
 if(USE_SCTP)
   add_definitions("-DUSE_SCTP")
 endif(USE_SCTP)
+
+if(USE_MQTT)
+  add_definitions("-DUSE_MQTT")
+endif(USE_MQTT)
 
 add_definitions("-DRTP_STREAM")
 
@@ -149,5 +159,10 @@ if(USE_SCTP)
     target_link_libraries(sipp_unittest ${SCTP_LIBRARY})
   endif()
 endif()
+
+if(USE_MQTT)
+  target_link_libraries(sipp mosquitto)
+  target_link_libraries(sipp_unittest mosquitto)
+endif(USE_MQTT)
 
 install(TARGETS sipp DESTINATION bin)

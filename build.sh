@@ -19,9 +19,9 @@ fi
 if test "$*" = "--none"; then
     cmake . -DUSE_GSL=
 elif test "$*" = "--common"; then
-    cmake . -DUSE_GSL=1 -DUSE_PCAP=1 -DUSE_SSL= -DUSE_SCTP=
+    cmake . -DUSE_GSL=1 -DUSE_PCAP=1 -DUSE_SSL= -DUSE_SCTP= -DUSE_MQTT=1
 elif test "$*" = "--full"; then
-    cmake . -DUSE_GSL=1 -DUSE_PCAP=1 -DUSE_SSL=1 -DUSE_SCTP=1
+    cmake . -DUSE_GSL=1 -DUSE_PCAP=1 -DUSE_SSL=1 -DUSE_SCTP=1 -DUSE_MQTT=1
 else
     cmake . "$@"
 fi

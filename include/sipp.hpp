@@ -244,6 +244,14 @@ MAYBE_EXTERN int                pathmaxret              DEFVAL(0);
 MAYBE_EXTERN int                pmtu                    DEFVAL(0);
 MAYBE_EXTERN bool               gracefulclose           DEFVAL(true);
 #endif
+#ifdef USE_MQTT
+MAYBE_EXTERN bool               mqtt_stats              DEFVAL(false);
+MAYBE_EXTERN char               mqtt_stats_topic[65536] DEFVAL("/sipp/stats");;
+MAYBE_EXTERN bool               mqtt_ctrl               DEFVAL(false);
+MAYBE_EXTERN char               mqtt_ctrl_topic[65536]  DEFVAL("/sipp/ctrl");;
+MAYBE_EXTERN char               mqtt_host[256]          DEFVAL("localhost");;
+MAYBE_EXTERN int                mqtt_port               DEFVAL(1883);
+#endif
 MAYBE_EXTERN char               control_ip[40];
 MAYBE_EXTERN int                control_port            DEFVAL(0);
 MAYBE_EXTERN int                buff_size               DEFVAL(65535);

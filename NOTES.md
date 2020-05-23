@@ -3,9 +3,11 @@
 ## User stories
 
 * as an operator, I want to launch an idle sipp instance
-* as an operator, I want to load a scenario via rpc
-* as an operator, I want to control sipp via rpc
+* as an operator, I want to load a scenario via mqtt
+* as an operator, I want to control sipp via mqtt
 * as an operator, I want to receive stats via mqtt
+
+* as an operator, I want to configure the mqtt password as sipp cmd line args
 
 ## Overall sipp features to look at
 
