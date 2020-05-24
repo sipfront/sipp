@@ -24,4 +24,13 @@
 
 * use -aa by default?
 
+## TODO
 
+* properly connect to mqtt in setup_mqtt_socket, see error log in /var/log/mosquitto/mosquitto.log:
+
+```
+1590313009: Socket error on client mosq/e8l]uEs=E<vrMohP1r, disconnecting.
+1590313050: New connection from 127.0.0.1 on port 1883.
+1590313050: New client connected from 127.0.0.1 as mosq/9nVhLKM<5HrTG74WoO (c1, k3).
+1590313054: Client mosq/9nVhLKM<5HrTG74WoO has exceeded timeout, disconnecting.
+```

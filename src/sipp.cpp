@@ -2100,7 +2100,17 @@ int main(int argc, char *argv[])
     setup_media_sockets();
 
     /* Creating the remote control socket thread. */
+#ifdef USE_MQTT
+    if (mqtt_ctrl || mqtt_stats)
+        setup_mqtt_socket();
+    if (!mqtt_ctrl)
+        setup_ctrl_socket();
+#else
     setup_ctrl_socket();
+#endif
+
+
+
     if (!nostdin) {
         setup_stdin_socket();
     }

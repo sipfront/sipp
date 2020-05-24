@@ -145,6 +145,9 @@ private:
 
 void setup_ctrl_socket();
 void setup_stdin_socket();
+#ifdef USE_MQTT
+void setup_mqtt_socket();
+#endif
 
 int handle_ctrl_socket();
 void handle_stdin_socket();

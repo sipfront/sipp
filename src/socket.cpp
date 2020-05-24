@@ -44,6 +44,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef USE_MQTT
+#include <mosquitto.h>
+#endif
+
 #include "config.h"
 #include "sipp.hpp"
 #include "socket.hpp"
@@ -488,6 +492,73 @@ int handle_ctrl_socket()
     }
     return 0;
 }
+
+#ifdef USE_MQTT
+
+void mqtt_cb_log(struct mosquitto *mosq, void *userdata,
+                  int level, const char *str)
+{
+    switch (level) {
+        case MOSQ_LOG_DEBUG:
+            WARNING("DBG: %s\n", str);
+            break;
+        case MOSQ_LOG_INFO:
+        case MOSQ_LOG_NOTICE:
+            WARNING("INF: %s\n", str);
+            break;
+        case MOSQ_LOG_WARNING:
+            WARNING("WRN: %s\n", str);
+            break;
+        case MOSQ_LOG_ERR:
+            ERROR("ERR: %s\n", str);
+            break;
+        default:
+            WARNING("Unknown MQTT loglevel!");
+    }
+}
+
+void mqtt_cb_connect(struct mosquitto *mosq, void *userdata, int result)
+{
+    if (!result) {
+        if (mqtt_ctrl) {
+            mosquitto_subscribe(mosq, NULL, mqtt_ctrl_topic, 2);
+        }
+    }
+    else {
+        ERROR_NO("Could not connect to MQTT broker\n");
+    }
+}
+
+void setup_mqtt_socket()
+{
+    // TODO: agranig: move to global?
+    struct mosquitto *mosq = NULL;
+    int keepalive_seconds = 3;
+
+    mosquitto_lib_init();
+    mosq = mosquitto_new(NULL, true, NULL);
+    if (!mosq) {
+        ERROR_NO("Could not setup MQTT, out of memory!");
+    }
+
+    mosquitto_log_callback_set(mosq, mqtt_cb_log);
+    mosquitto_connect_callback_set(mosq, mqtt_cb_connect);
+    /*
+    mosquitto_message_callback_set(mosq, mqtt_cb_msg);
+    mosquitto_subscribe_callback_set(mosq, mqtt_cb_subscribe);
+    mosquitto_disconnect_callback_set(mosq, mqtt_cb_disconnect);
+    */
+
+    if (mosquitto_connect(mosq, mqtt_host, mqtt_port, keepalive_seconds)) {
+        ERROR_NO("Could not connect to MQTT broker!");
+    }
+
+    ctrl_socket = new SIPpSocket(0, T_TCP, mosquitto_socket(mosq), 0);
+    if (!ctrl_socket) {
+        ERROR_NO("Could not setup MQTT control socket!");
+    }
+}
+#endif
 
 void setup_ctrl_socket()
 {
