@@ -561,12 +561,12 @@ void setup_mqtt_socket()
     // TODO: agranig: set user/pass if passed via cmdline
     /*
     if (mqtt_user && mqtt_pass) {
-		ret = mosquitto_username_pw_set(mosq, mqtt_user, mqtt_pass);
-		if (ret != MOSQ_ERR_SUCCESS) {
+        ret = mosquitto_username_pw_set(mosq, mqtt_user, mqtt_pass);
+        if (ret != MOSQ_ERR_SUCCESS) {
             ERROR_NO("Could not setup MQTT, failed to set user/pass: %s\n",
                 mosquitto_strerror(ret));
         }
-	}
+    }
     */
 
     mosquitto_log_callback_set(mosq, mqtt_cb_log);
@@ -596,8 +596,7 @@ int handle_mqtt_socket()
     ret = mosquitto_loop_read(mosq, 1);
     if (ret == MOSQ_ERR_CONN_LOST) {
         WARNING("Reconnecting MQTT socket\n");
-        //mqtt_socket->close();
-        // TODO: agranig: needed to delete manually?
+        // TODO: agranig: do we need to somehow "close" socket manually?
         delete mqtt_socket;
         ret = mosquitto_reconnect(mosq);
         if (ret != MOSQ_ERR_SUCCESS) {
@@ -2941,7 +2940,7 @@ void SIPpSocket::pollset_process(int wait)
                 long as there's data to read */
 
 #ifdef USE_MQTT
-    // TODO: find a better place to call this, where it's called frequently
+    // TODO: agranig: find a better place to call this, where it's called frequently
     // so we don't miss timer events e.g. to send PINGREQ?
     mosquitto_loop_misc(mosq);
 #endif
