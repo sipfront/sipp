@@ -54,30 +54,12 @@ public:
      */
     virtual ~MQTTStat ();
 
-
-    /**
-     * Delete the single instance of the class.
-     *
-     * Only one instance of MQTTStat exists in the component. This
-     * instance is deleted when the close method is called.
-     */
-    void close ();
-
-    /* define the Topic to use to dump statistic to MQTT */
-    virtual void setTopic(const char* name);
-    virtual void initRtt(const char* name, const char* extension, unsigned long P_value);
-
     /**
      * Dump data periodically to MQTT
      */
     virtual void dumpData ();
 
     virtual void dumpDataRtt ();
-
-    /**
-     * initialize the class variable member
-     */
-    virtual int init();
 
 private:
 

@@ -33,74 +33,10 @@ MQTTStat::~MQTTStat()
 {
 }
 
-
-int MQTTStat::init ()
-{
-    int ret = CStat::init();
-    if (ret != 1)
-        return ret;
-
-    // MQTT specific init goes here
-
-    return(1);
-}
-
-// agranig: TODO: do we need this?
-void MQTTStat::setTopic(const char* P_name)
-{
-    CStat::setFileName(P_name);
-}
-
-void MQTTStat::initRtt(const char* P_name, const char* P_extension,
-                    unsigned long P_report_freq_dumpRtt)
-{
-    // TODO: can we skip extension/pid in mqtt context? do we need other method for that?
-
-    int sizeOf, sizeOfExtension;
-
-    if(P_name != NULL) {
-        sizeOf = strlen(P_name) ;
-        if(sizeOf > 0) {
-            //  4 for '_rtt' and 6 for pid
-            sizeOf += 10 ;
-            sizeOfExtension = strlen(P_extension);
-            if(M_fileNameRtt != NULL)
-                delete [] M_fileNameRtt;
-            sizeOf += sizeOfExtension;
-            M_fileNameRtt = new char[sizeOf+1];
-            sprintf (M_fileNameRtt, "%s_%ld_rtt%s", P_name, (long) getpid(),P_extension);
-        } else {
-            cerr << "new file name length is null - "
-                 << "keeping the default filename : "
-                 << DEFAULT_FILE_NAME << endl;
-        }
-    } else {
-        cerr << "new file name is NULL ! - keeping the default filename : "
-             << DEFAULT_FILE_NAME << endl;
-    }
-
-    // initiate the table dump response time
-    M_report_freq_dumpRtt = P_report_freq_dumpRtt ;
-
-    M_dumpRespTime = new T_value_rtt [P_report_freq_dumpRtt] ;
-
-    if ( M_dumpRespTime == NULL ) {
-        cerr << "Memory allocation failure" << endl;
-        exit(EXIT_FATAL_ERROR);
-    }
-
-    for (unsigned L_i = 0 ; L_i < P_report_freq_dumpRtt; L_i ++) {
-        M_dumpRespTime[L_i].date = 0.0;
-        M_dumpRespTime[L_i].rtd_no = 0;
-        M_dumpRespTime[L_i].rtt = 0.0;
-    }
-}
-
-MQTTStat::MQTTStat ()
+MQTTStat::MQTTStat()
 {
     CStat();
-
-    init();
+    CStat::init();
 }
 
 void MQTTStat::dumpData ()
@@ -110,6 +46,16 @@ void MQTTStat::dumpData ()
     float  averageCallRate;
     float  realInstantCallRate;
     unsigned long numberOfCall;
+
+    WARNING("MQTTStat::dumpData\n");
+
+    if (mqtt_handler == NULL) {
+        cerr << "Unable to use uninitialized MQTT handler!" << endl;
+        exit(EXIT_FATAL_ERROR);
+    }
+
+    WARNING("MQTTStat::dumpData data goes here\n");
+    return;
 
     // computing the real call rate
     GET_TIME (&currentTime);
@@ -128,24 +74,6 @@ void MQTTStat::dumpData ()
                            1000*(float)numberOfCall / (float)localElapsedTime :
                            0.0);
 
-    if(M_outputStream == NULL) {
-        // if the file is still not opened, we opened it now
-        M_outputStream = new ofstream(M_fileName);
-        M_headerAlreadyDisplayed = false;
-
-        if(M_outputStream == NULL) {
-            cerr << "Unable to open stat file '" << M_fileName << "' !" << endl;
-            exit(EXIT_FATAL_ERROR);
-        }
-
-#ifndef __osf__
-        if(!M_outputStream->is_open()) {
-            cerr << "Unable to open stat file '" << M_fileName << "' !" << endl;
-            exit(EXIT_FATAL_ERROR);
-        }
-#endif
-
-    }
 
     if(M_headerAlreadyDisplayed == false) {
         // header - it's dump in file only one time at the beginning of the file
@@ -373,23 +301,15 @@ void MQTTStat::dumpData ()
 
 void MQTTStat::dumpDataRtt ()
 {
-    if(M_outputStreamRtt == NULL) {
-        // if the file is still not opened, we opened it now
-        M_outputStreamRtt = new ofstream(M_fileNameRtt);
-        M_headerAlreadyDisplayedRtt = false;
+    WARNING("MQTTStat::dumpDataRtt\n");
 
-        if(M_outputStreamRtt == NULL) {
-            cerr << "Unable to open rtt file '" << M_fileNameRtt << "' !" << endl;
-            exit(EXIT_FATAL_ERROR);
-        }
-
-#ifndef __osf__
-        if(!M_outputStreamRtt->is_open()) {
-            cerr << "Unable to open rtt file '" << M_fileNameRtt << "' !" << endl;
-            exit(EXIT_FATAL_ERROR);
-        }
-#endif
+    if (mqtt_handler == NULL) {
+        cerr << "Unable to use uninitialized MQTT handler!" << endl;
+        exit(EXIT_FATAL_ERROR);
     }
+
+    WARNING("MQTTStat::dumpDataRtt data goes here\n");
+    return;
 
     if(M_headerAlreadyDisplayedRtt == false) {
         (*M_outputStreamRtt) << "Date_ms" << stat_delimiter

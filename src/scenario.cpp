@@ -30,6 +30,11 @@
 #include <stdlib.h>
 #include "config.h"
 #include "sipp.hpp"
+
+#ifdef USE_MQTT
+#include "mqtt_stat.hpp"
+#endif
+
 #ifdef HAVE_GSL
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -678,8 +683,13 @@ scenario::scenario(char * filename, int deflt)
         }
     }
 
-    // agranig: TODO: add a stats factory to return the correct class instance?
-    stats = new CStat();
+#ifdef USE_MQTT
+    if (mqtt_stats)
+        stats = new MQTTStat();
+    else
+#endif
+        stats = new CStat();
+
     allocVars = new AllocVariableTable(userVariables);
 
     hidedefault = false;
