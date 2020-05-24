@@ -23,7 +23,7 @@ jobs:
     - name: prepare
       run: git submodule update --init
     - name: installdeps
-      run: sudo apt-get update && sudo apt-get install --yes build-essential cmake libpcap-dev openssl libssl-dev libgsl-dev libsctp-dev libncurses5-dev libncurses5
+      run: sudo apt-get update && sudo apt-get install --yes build-essential cmake libpcap-dev openssl libssl-dev libgsl-dev libsctp-dev libncurses5-dev libncurses5 libmosquitto-dev
     - name: build
       run: ./build.sh --full
     - name: test
