@@ -44,10 +44,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef USE_MQTT
-#include <mosquitto.h>
-#endif
-
 #include "config.h"
 #include "sipp.hpp"
 #include "socket.hpp"
@@ -64,7 +60,6 @@ SIPpSocket *stdin_socket = NULL;
 
 #ifdef USE_MQTT
 SIPpSocket *mqtt_socket = NULL;
-struct mosquitto *mosq = NULL;
 #endif
 
 static int stdin_fileno = -1;
@@ -537,6 +532,20 @@ void mqtt_cb_connect(struct mosquitto *mosq, void *userdata, int result)
     }
 }
 
+void mqtt_cb_subscribe(struct mosquitto *mosq, void *userdata, int mid,
+                        int qos_count, const int *granted_qos)
+{
+    WARNING("MQTT subscribed (mid: %d): %d\n", mid, granted_qos[0]);
+    for (int i = 1; i < qos_count; i++) {
+        WARNING("MQTT\t %d", granted_qos[i]);
+    }
+}
+
+void mqtt_cb_disconnect(struct mosquitto *mosq, void *userdat, int rc)
+{
+    WARNING("MQTT disconnect, error: %d: %s\n", rc, mosquitto_strerror(rc));
+}
+
 void mqtt_cb_msg(struct mosquitto *mosq, void *userdata,
                   const struct mosquitto_message *msg)
 {
@@ -553,15 +562,15 @@ void setup_mqtt_socket()
 
     mosquitto_lib_init();
     // TODO: agranig: let clientid be passed via cmdline
-    mosq = mosquitto_new(NULL, true, NULL);
-    if (!mosq) {
+    mqtt_handler = mosquitto_new(NULL, true, NULL);
+    if (!mqtt_handler) {
         ERROR_NO("Could not setup MQTT, out of memory!\n");
     }
 
     // TODO: agranig: set user/pass if passed via cmdline
     /*
     if (mqtt_user && mqtt_pass) {
-        ret = mosquitto_username_pw_set(mosq, mqtt_user, mqtt_pass);
+        ret = mosquitto_username_pw_set(mqtt_handler, mqtt_user, mqtt_pass);
         if (ret != MOSQ_ERR_SUCCESS) {
             ERROR_NO("Could not setup MQTT, failed to set user/pass: %s\n",
                 mosquitto_strerror(ret));
@@ -569,21 +578,19 @@ void setup_mqtt_socket()
     }
     */
 
-    mosquitto_log_callback_set(mosq, mqtt_cb_log);
-    mosquitto_connect_callback_set(mosq, mqtt_cb_connect);
-    mosquitto_message_callback_set(mosq, mqtt_cb_msg);
-    /*
-    mosquitto_subscribe_callback_set(mosq, mqtt_cb_subscribe);
-    mosquitto_disconnect_callback_set(mosq, mqtt_cb_disconnect);
-    */
+    mosquitto_log_callback_set(mqtt_handler, mqtt_cb_log);
+    mosquitto_connect_callback_set(mqtt_handler, mqtt_cb_connect);
+    mosquitto_message_callback_set(mqtt_handler, mqtt_cb_msg);
+    mosquitto_subscribe_callback_set(mqtt_handler, mqtt_cb_subscribe);
+    mosquitto_disconnect_callback_set(mqtt_handler, mqtt_cb_disconnect);
 
-    ret = mosquitto_connect(mosq, mqtt_host, mqtt_port, keepalive_seconds);
+    ret = mosquitto_connect(mqtt_handler, mqtt_host, mqtt_port, keepalive_seconds);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERROR_NO("Could not connect to MQTT broker '%s:%d': %s\n",
                 mqtt_host, mqtt_port, mosquitto_strerror(ret));
     }
 
-    mqtt_socket = new SIPpSocket(0, T_TCP, mosquitto_socket(mosq), 0);
+    mqtt_socket = new SIPpSocket(0, T_TCP, mosquitto_socket(mqtt_handler), 0);
     if (!mqtt_socket) {
         ERROR_NO("Could not setup MQTT control socket!\n");
     }
@@ -593,17 +600,17 @@ int handle_mqtt_socket()
 {
     int ret;
 
-    ret = mosquitto_loop_read(mosq, 1);
+    ret = mosquitto_loop_read(mqtt_handler, 1);
     if (ret == MOSQ_ERR_CONN_LOST) {
         WARNING("Reconnecting MQTT socket\n");
         // TODO: agranig: do we need to somehow "close" socket manually?
         delete mqtt_socket;
-        ret = mosquitto_reconnect(mosq);
+        ret = mosquitto_reconnect(mqtt_handler);
         if (ret != MOSQ_ERR_SUCCESS) {
             ERROR_NO("Could not reconnect to MQTT broker: %s\n",
                     mosquitto_strerror(ret));
         }
-        mqtt_socket = new SIPpSocket(0, T_TCP, mosquitto_socket(mosq), 0);
+        mqtt_socket = new SIPpSocket(0, T_TCP, mosquitto_socket(mqtt_handler), 0);
         if (!mqtt_socket) {
             ERROR_NO("Could not setup MQTT control socket!\n");
         }
@@ -2942,7 +2949,7 @@ void SIPpSocket::pollset_process(int wait)
 #ifdef USE_MQTT
     // TODO: agranig: find a better place to call this, where it's called frequently
     // so we don't miss timer events e.g. to send PINGREQ?
-    mosquitto_loop_misc(mosq);
+    mosquitto_loop_misc(mqtt_handler);
 #endif
 
 #ifndef HAVE_EPOLL
@@ -3032,7 +3039,7 @@ void SIPpSocket::pollset_process(int wait)
 
 #ifdef USE_MQTT
                 if (sock == mqtt_socket) {
-                    mosquitto_loop_write(mosq, 1);
+                    mosquitto_loop_write(mqtt_handler, 1);
                 }
                 else
 #endif

@@ -63,6 +63,10 @@
 #include <alloca.h>
 #endif
 
+#ifdef USE_MQTT
+#include <mosquitto.h>
+#endif
+
 /* Sipp includes */
 
 #include "xp_parser.h"
@@ -466,6 +470,10 @@ MAYBE_EXTERN int           peers_connected              DEFVAL(0);
 MAYBE_EXTERN struct sockaddr_storage remote_sockaddr;
 MAYBE_EXTERN short         use_remote_sending_addr      DEFVAL(0);
 MAYBE_EXTERN struct sockaddr_storage remote_sending_sockaddr;
+
+#ifdef USE_MQTT
+MAYBE_EXTERN struct mosquitto *mqtt_handler;
+#endif
 
 enum E_Alter_YesNo {
     E_ALTER_YES=0,
