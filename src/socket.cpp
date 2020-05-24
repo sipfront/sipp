@@ -592,7 +592,7 @@ void setup_mqtt_socket()
 int handle_mqtt_socket()
 {
     int ret;
-   
+
     ret = mosquitto_loop_read(mosq, 1);
     if (ret == MOSQ_ERR_CONN_LOST) {
         WARNING("Reconnecting MQTT socket\n");
