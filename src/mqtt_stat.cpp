@@ -17,6 +17,8 @@
  *
  */
 
+#include <sstream>
+
 #include "config.h"
 #include "sipp.hpp"
 
@@ -41,11 +43,13 @@ MQTTStat::MQTTStat()
 
 void MQTTStat::dumpData ()
 {
+    int ret;
     long   localElapsedTime, globalElapsedTime ;
     struct timeval currentTime;
     float  averageCallRate;
     float  realInstantCallRate;
     unsigned long numberOfCall;
+    std::stringstream jsonData;
 
     WARNING("MQTTStat::dumpData\n");
 
@@ -53,9 +57,6 @@ void MQTTStat::dumpData ()
         cerr << "Unable to use uninitialized MQTT handler!" << endl;
         exit(EXIT_FATAL_ERROR);
     }
-
-    WARNING("MQTTStat::dumpData data goes here\n");
-    return;
 
     // computing the real call rate
     GET_TIME (&currentTime);
@@ -74,77 +75,83 @@ void MQTTStat::dumpData ()
                            1000*(float)numberOfCall / (float)localElapsedTime :
                            0.0);
 
+#define JQ(k) "\"" #k "\":\""
+#define JQV(k, v) JQ(k) << (v) << "\""
+#define JQC(k, v) JQV(k, v) << ","
+    jsonData
+            << "{"
+            << JQC(StartTime, formatTime(&M_startTime))
+            << JQC(LastResetTime, formatTime(&M_plStartTime))
+            << JQC(CurrentTime, formatTime(&currentTime))
+            << JQC(ElapsedTime(P), msToHHMMSS(localElapsedTime))
+            << JQC(ElapsedTime(C), msToHHMMSS(globalElapsedTime))
+            << JQC(TargetRate, (users >= 0) ? users : rate)
+            << JQV(CallRate(P), realInstantCallRate) << "}" << endl;
+        /*
+            << JQC(CallRate(C)
+            << JQC(IncomingCall(P)
+            << JQC(IncomingCall(C)
+            << JQC(OutgoingCall(P)
+            << JQC(OutgoingCall(C)
+            << JQC(TotalCallCreated
+            << JQC(CurrentCall
+            << JQC(SuccessfulCall(P)
+            << JQC(SuccessfulCall(C)
+            << JQC(FailedCall(P)
+            << JQC(FailedCall(C)
+            << JQC(FailedCannotSendMessage(P)
+            << JQC(FailedCannotSendMessage(C)
+            << JQC(FailedMaxUDPRetrans(P)
+            << JQC(FailedMaxUDPRetrans(C)
+            << JQC(FailedTcpConnect(P)
+            << JQC(FailedTcpConnect(C)
+            << JQC(FailedTcpClosed(P)
+            << JQC(FailedTcpClosed(C)
+            << JQC(FailedUnexpectedMessage(P)
+            << JQC(FailedUnexpectedMessage(C)
+            << JQC(FailedCallRejected(P)
+            << JQC(FailedCallRejected(C)
+            << JQC(FailedCmdNotSent(P)
+            << JQC(FailedCmdNotSent(C)
+            << JQC(FailedRegexpDoesntMatch(P)
+            << JQC(FailedRegexpDoesntMatch(C)
+            << JQC(FailedRegexpShouldntMatch(P)
+            << JQC(FailedRegexpShouldntMatch(C)
+            << JQC(FailedRegexpHdrNotFound(P)
+            << JQC(FailedRegexpHdrNotFound(C)
+            << JQC(FailedOutboundCongestion(P)
+            << JQC(FailedOutboundCongestion(C)
+            << JQC(FailedTimeoutOnRecv(P)
+            << JQC(FailedTimeoutOnRecv(C)
+            << JQC(FailedTimeoutOnSend(P)
+            << JQC(FailedTimeoutOnSend(C)
+            << JQC(FailedTestDoesntMatch(P)
+            << JQC(FailedTestDoesntMatch(C)
+            << JQC(FailedTestShouldntMatch(P)
+            << JQC(FailedTestShouldntMatch(C)
+            << JQC(FailedStrcmpDoesntMatch(P)
+            << JQC(FailedStrcmpDoesntMatch(C)
+            << JQC(FailedStrcmpShouldntMatch(P)
+            << JQC(FailedStrcmpShouldntMatch(C)
+            << JQC(OutOfCallMsgs(P)
+            << JQC(OutOfCallMsgs(C)
+            << JQC(DeadCallMsgs(P)
+            << JQC(DeadCallMsgs(C)
+            << JQC(Retransmissions(P)
+            << JQC(Retransmissions(C)
+            << JQC(AutoAnswered(P)
+            << JQC(AutoAnswered(C)
+            << JQC(Warnings(P)
+            << JQC(Warnings(C)
+            << JQC(FatalErrors(P)
+            << JQC(FatalErrors(C)
+            << JQC(WatchdogMajor(P)
+            << JQC(WatchdogMajor(C)
+            << JQC(WatchdogMinor(P)
+            << JQ(WatchdogMinor(C)
 
-    if(M_headerAlreadyDisplayed == false) {
-        // header - it's dump in file only one time at the beginning of the file
-        (*M_outputStream) << "StartTime" << stat_delimiter
-                          << "LastResetTime" << stat_delimiter
-                          << "CurrentTime" << stat_delimiter
-                          << "ElapsedTime(P)" << stat_delimiter
-                          << "ElapsedTime(C)" << stat_delimiter
-                          << "TargetRate" << stat_delimiter
-                          << "CallRate(P)" << stat_delimiter
-                          << "CallRate(C)" << stat_delimiter
-                          << "IncomingCall(P)" << stat_delimiter
-                          << "IncomingCall(C)" << stat_delimiter
-                          << "OutgoingCall(P)" << stat_delimiter
-                          << "OutgoingCall(C)" << stat_delimiter
-                          << "TotalCallCreated" << stat_delimiter
-                          << "CurrentCall" << stat_delimiter
-                          << "SuccessfulCall(P)" << stat_delimiter
-                          << "SuccessfulCall(C)" << stat_delimiter
-                          << "FailedCall(P)" << stat_delimiter
-                          << "FailedCall(C)" << stat_delimiter
-                          << "FailedCannotSendMessage(P)" << stat_delimiter
-                          << "FailedCannotSendMessage(C)" << stat_delimiter
-                          << "FailedMaxUDPRetrans(P)" << stat_delimiter
-                          << "FailedMaxUDPRetrans(C)" << stat_delimiter
-                          << "FailedTcpConnect(P)" << stat_delimiter
-                          << "FailedTcpConnect(C)" << stat_delimiter
-                          << "FailedTcpClosed(P)" << stat_delimiter
-                          << "FailedTcpClosed(C)" << stat_delimiter
-                          << "FailedUnexpectedMessage(P)" << stat_delimiter
-                          << "FailedUnexpectedMessage(C)" << stat_delimiter
-                          << "FailedCallRejected(P)" << stat_delimiter
-                          << "FailedCallRejected(C)" << stat_delimiter
-                          << "FailedCmdNotSent(P)" << stat_delimiter
-                          << "FailedCmdNotSent(C)" << stat_delimiter
-                          << "FailedRegexpDoesntMatch(P)" << stat_delimiter
-                          << "FailedRegexpDoesntMatch(C)" << stat_delimiter
-                          << "FailedRegexpShouldntMatch(P)" << stat_delimiter
-                          << "FailedRegexpShouldntMatch(C)" << stat_delimiter
-                          << "FailedRegexpHdrNotFound(P)" << stat_delimiter
-                          << "FailedRegexpHdrNotFound(C)" << stat_delimiter
-                          << "FailedOutboundCongestion(P)" << stat_delimiter
-                          << "FailedOutboundCongestion(C)" << stat_delimiter
-                          << "FailedTimeoutOnRecv(P)" << stat_delimiter
-                          << "FailedTimeoutOnRecv(C)" << stat_delimiter
-                          << "FailedTimeoutOnSend(P)" << stat_delimiter
-                          << "FailedTimeoutOnSend(C)" << stat_delimiter
-                          << "FailedTestDoesntMatch(P)" << stat_delimiter
-                          << "FailedTestDoesntMatch(C)" << stat_delimiter
-                          << "FailedTestShouldntMatch(P)" << stat_delimiter
-                          << "FailedTestShouldntMatch(C)" << stat_delimiter
-                          << "FailedStrcmpDoesntMatch(P)" << stat_delimiter
-                          << "FailedStrcmpDoesntMatch(C)" << stat_delimiter
-                          << "FailedStrcmpShouldntMatch(P)" << stat_delimiter
-                          << "FailedStrcmpShouldntMatch(C)" << stat_delimiter
-                          << "OutOfCallMsgs(P)" << stat_delimiter
-                          << "OutOfCallMsgs(C)" << stat_delimiter
-                          << "DeadCallMsgs(P)" << stat_delimiter
-                          << "DeadCallMsgs(C)" << stat_delimiter
-                          << "Retransmissions(P)" << stat_delimiter
-                          << "Retransmissions(C)" << stat_delimiter
-                          << "AutoAnswered(P)" << stat_delimiter
-                          << "AutoAnswered(C)" << stat_delimiter
-                          << "Warnings(P)" << stat_delimiter
-                          << "Warnings(C)" << stat_delimiter
-                          << "FatalErrors(P)" << stat_delimiter
-                          << "FatalErrors(C)" << stat_delimiter
-                          << "WatchdogMajor(P)" << stat_delimiter
-                          << "WatchdogMajor(C)" << stat_delimiter
-                          << "WatchdogMinor(P)" << stat_delimiter
-                          << "WatchdogMinor(C)" << stat_delimiter;
+
+        ////// agranig for now util here
 
         for (int i = 1; i <= nRtds(); i++) {
             char s_P[80];
@@ -297,7 +304,18 @@ void MQTTStat::dumpData ()
     // flushing the output file to let the tail -f working !
     (*M_outputStream).flush();
 
-} /* end of logData () */
+    */
+
+    std::string jsonDataStr = jsonData.str();
+
+    ret = mosquitto_publish(mqtt_handler, NULL, mqtt_stats_topic,
+				   jsonDataStr.length(), jsonDataStr.c_str(),
+                   2, false);
+	if (ret != MOSQ_ERR_SUCCESS) {
+		WARNING("MQTT: failed to publish message: %s\n", mosquitto_strerror(ret));
+	}
+
+}
 
 void MQTTStat::dumpDataRtt ()
 {
