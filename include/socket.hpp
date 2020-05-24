@@ -145,12 +145,14 @@ private:
 
 void setup_ctrl_socket();
 void setup_stdin_socket();
-#ifdef USE_MQTT
-void setup_mqtt_socket();
-#endif
 
 int handle_ctrl_socket();
 void handle_stdin_socket();
+
+#ifdef USE_MQTT
+void setup_mqtt_socket();
+int handle_mqtt_socket();
+#endif
 
 void process_message(SIPpSocket* socket, char *msg, ssize_t msg_size, struct sockaddr_storage *src);
 bool reconnect_allowed();

@@ -62,6 +62,11 @@ extern bool show_index;
 SIPpSocket *ctrl_socket = NULL;
 SIPpSocket *stdin_socket = NULL;
 
+#ifdef USE_MQTT
+SIPpSocket *mqtt_socket = NULL;
+struct mosquitto *mosq = NULL;
+#endif
+
 static int stdin_fileno = -1;
 static int stdin_mode;
 
@@ -500,27 +505,30 @@ void mqtt_cb_log(struct mosquitto *mosq, void *userdata,
 {
     switch (level) {
         case MOSQ_LOG_DEBUG:
-            WARNING("DBG: %s\n", str);
+            WARNING("MQTT DBG: %s\n", str);
             break;
         case MOSQ_LOG_INFO:
         case MOSQ_LOG_NOTICE:
-            WARNING("INF: %s\n", str);
+            WARNING("MQTT INF: %s\n", str);
             break;
         case MOSQ_LOG_WARNING:
-            WARNING("WRN: %s\n", str);
+            WARNING("MQTT WRN: %s\n", str);
             break;
         case MOSQ_LOG_ERR:
-            ERROR("ERR: %s\n", str);
+            WARNING("MQTT ERR: %s\n", str);
             break;
         default:
-            WARNING("Unknown MQTT loglevel!");
+            WARNING("Unknown MQTT loglevel!\n");
     }
 }
 
 void mqtt_cb_connect(struct mosquitto *mosq, void *userdata, int result)
 {
+    WARNING("MQTT connect callback fired\n");
     if (!result) {
+        WARNING("MQTT connect callback checking ctrl topic\n");
         if (mqtt_ctrl) {
+            WARNING("MQTT connect callback subscribing to ctrl topic '%s'\n", mqtt_ctrl_topic);
             mosquitto_subscribe(mosq, NULL, mqtt_ctrl_topic, 2);
         }
     }
@@ -529,35 +537,81 @@ void mqtt_cb_connect(struct mosquitto *mosq, void *userdata, int result)
     }
 }
 
+void mqtt_cb_msg(struct mosquitto *mosq, void *userdata,
+                  const struct mosquitto_message *msg)
+{
+    WARNING("MQTT Received message on topic: %s\n", msg->topic);
+    if(msg->payload != NULL){
+        WARNING("Received MQTT Payload: %s\n", (char *) msg->payload);
+    }
+}
+
 void setup_mqtt_socket()
 {
-    // TODO: agranig: move to global?
-    struct mosquitto *mosq = NULL;
     int keepalive_seconds = 3;
+    int ret;
 
     mosquitto_lib_init();
+    // TODO: agranig: let clientid be passed via cmdline
     mosq = mosquitto_new(NULL, true, NULL);
     if (!mosq) {
-        ERROR_NO("Could not setup MQTT, out of memory!");
+        ERROR_NO("Could not setup MQTT, out of memory!\n");
     }
+
+    // TODO: agranig: set user/pass if passed via cmdline
+    /*
+    if (mqtt_user && mqtt_pass) {
+		ret = mosquitto_username_pw_set(mosq, mqtt_user, mqtt_pass);
+		if (ret != MOSQ_ERR_SUCCESS) {
+            ERROR_NO("Could not setup MQTT, failed to set user/pass: %s\n",
+                mosquitto_strerror(ret));
+        }
+	}
+    */
 
     mosquitto_log_callback_set(mosq, mqtt_cb_log);
     mosquitto_connect_callback_set(mosq, mqtt_cb_connect);
-    /*
     mosquitto_message_callback_set(mosq, mqtt_cb_msg);
+    /*
     mosquitto_subscribe_callback_set(mosq, mqtt_cb_subscribe);
     mosquitto_disconnect_callback_set(mosq, mqtt_cb_disconnect);
     */
 
-    if (mosquitto_connect(mosq, mqtt_host, mqtt_port, keepalive_seconds)) {
-        ERROR_NO("Could not connect to MQTT broker!");
+    ret = mosquitto_connect(mosq, mqtt_host, mqtt_port, keepalive_seconds);
+    if (ret != MOSQ_ERR_SUCCESS) {
+        ERROR_NO("Could not connect to MQTT broker '%s:%d': %s\n",
+                mqtt_host, mqtt_port, mosquitto_strerror(ret));
     }
 
-    ctrl_socket = new SIPpSocket(0, T_TCP, mosquitto_socket(mosq), 0);
-    if (!ctrl_socket) {
-        ERROR_NO("Could not setup MQTT control socket!");
+    mqtt_socket = new SIPpSocket(0, T_TCP, mosquitto_socket(mosq), 0);
+    if (!mqtt_socket) {
+        ERROR_NO("Could not setup MQTT control socket!\n");
     }
 }
+
+int handle_mqtt_socket()
+{
+    int ret;
+   
+    ret = mosquitto_loop_read(mosq, 1);
+    if (ret == MOSQ_ERR_CONN_LOST) {
+        WARNING("Reconnecting MQTT socket\n");
+        //mqtt_socket->close();
+        // TODO: agranig: needed to delete manually?
+        delete mqtt_socket;
+        ret = mosquitto_reconnect(mosq);
+        if (ret != MOSQ_ERR_SUCCESS) {
+            ERROR_NO("Could not reconnect to MQTT broker: %s\n",
+                    mosquitto_strerror(ret));
+        }
+        mqtt_socket = new SIPpSocket(0, T_TCP, mosquitto_socket(mosq), 0);
+        if (!mqtt_socket) {
+            ERROR_NO("Could not setup MQTT control socket!\n");
+        }
+    }
+    return 0;
+}
+
 #endif
 
 void setup_ctrl_socket()
@@ -2886,6 +2940,12 @@ void SIPpSocket::pollset_process(int wait)
                 recv_count is a flag that stays up as
                 long as there's data to read */
 
+#ifdef USE_MQTT
+    // TODO: find a better place to call this, where it's called frequently
+    // so we don't miss timer events e.g. to send PINGREQ?
+    mosquitto_loop_misc(mosq);
+#endif
+
 #ifndef HAVE_EPOLL
     /* What index should we try reading from? */
     static size_t read_index;
@@ -2971,7 +3031,13 @@ void SIPpSocket::pollset_process(int wait)
 #endif
                 sock->ss_congested = false;
 
-                sock->flush();
+#ifdef USE_MQTT
+                if (sock == mqtt_socket) {
+                    mosquitto_loop_write(mosq, 1);
+                }
+                else
+#endif
+                    sock->flush();
                 events++;
             }
         }
@@ -2989,6 +3055,10 @@ void SIPpSocket::pollset_process(int wait)
                 }
             } else if (sock == ctrl_socket) {
                 handle_ctrl_socket();
+#ifdef USE_MQTT
+            } else if (sock == mqtt_socket) {
+                handle_mqtt_socket();
+#endif
             } else if (sock == stdin_socket) {
                 handle_stdin_socket();
             } else if (sock == localTwinSippSocket) {
