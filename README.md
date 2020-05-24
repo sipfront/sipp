@@ -1,11 +1,4 @@
-<a href="https://travis-ci.org/SIPp/sipp">
-  <img alt="Travis Build Status"
-       src="https://api.travis-ci.org/SIPp/sipp.svg"/>
-</a>
-<a href="https://scan.coverity.com/projects/5988">
-  <img alt="Coverity Scan Build Status"
-       src="https://scan.coverity.com/projects/5988/badge.svg"/>
-</a>
+![C/C++ CI](https://github.com/agranig/sipp/workflows/C/C++%20CI/badge.svg?branch=agranig%2Fmqttstats)
 
 SIPp - a SIP protocol test tool
 Copyright (C) 2003-2019 - The Authors
