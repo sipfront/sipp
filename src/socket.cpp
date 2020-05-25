@@ -578,16 +578,13 @@ void setup_mqtt_socket()
         ERROR_NO("Could not setup MQTT, out of memory!\n");
     }
 
-    // TODO: agranig: set user/pass if passed via cmdline
-    /*
     if (mqtt_user && mqtt_pass) {
         ret = mosquitto_username_pw_set(mqtt_handler, mqtt_user, mqtt_pass);
         if (ret != MOSQ_ERR_SUCCESS) {
-            ERROR_NO("Could not setup MQTT, failed to set user/pass: %s\n",
-                mosquitto_strerror(ret));
+            ERROR_NO("Could not setup MQTT, failed to set credentials for user '%s': %s\n",
+                mqtt_user, mosquitto_strerror(ret));
         }
     }
-    */
 
     //mosquitto_log_callback_set(mqtt_handler, mqtt_cb_log);
     mosquitto_connect_callback_set(mqtt_handler, mqtt_cb_connect);

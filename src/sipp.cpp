@@ -401,13 +401,18 @@ struct sipp_option options_table[] = {
     {"mqtt_ctrl_topic", "Set the MQTT topic for subscribing to control commands. Default is '/sipp/ctrl'", SIPP_OPTION_STRING, &mqtt_ctrl_topic, 1},
     {"mqtt_host", "Set the hostname of the MQTT broker. Default is 'localhost'", SIPP_OPTION_STRING, &mqtt_host, 1},
     {"mqtt_port", "Set the port number of the MQTT broker. Default is 1883.", SIPP_OPTION_INT, &mqtt_port, 1},
+    {"mqtt_user", "Set the username to authenticate at the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_user, 1},
+    {"mqtt_pass", "Set the password to authenticate at the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_pass, 1},
 #else
     {"mqtt_stats", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_stats_topic", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_rttstats_topic", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_ctrl", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_ctrl_topic", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_host", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_port", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_user", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_pass", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
 #endif
 
 };

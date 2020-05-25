@@ -256,6 +256,8 @@ MAYBE_EXTERN bool               mqtt_ctrl               DEFVAL(false);
 MAYBE_EXTERN const char *       mqtt_ctrl_topic         DEFVAL("/sipp/ctrl");
 MAYBE_EXTERN const char *       mqtt_host               DEFVAL("localhost");
 MAYBE_EXTERN int                mqtt_port               DEFVAL(1883);
+MAYBE_EXTERN const char *       mqtt_user               DEFVAL(NULL);
+MAYBE_EXTERN const char *       mqtt_pass               DEFVAL(NULL);
 MAYBE_EXTERN bool               mqtt_ready              DEFVAL(false);
 #endif
 MAYBE_EXTERN char               control_ip[40];
