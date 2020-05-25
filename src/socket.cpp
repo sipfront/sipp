@@ -571,7 +571,6 @@ void setup_mqtt_socket()
     //mosquitto_log_callback_set(mqtt_handler, mqtt_cb_log);
     mosquitto_connect_callback_set(mqtt_handler, mqtt_cb_connect);
     mosquitto_message_callback_set(mqtt_handler, mqtt_cb_msg);
-    mosquitto_subscribe_callback_set(mqtt_handler, mqtt_cb_subscribe);
     mosquitto_disconnect_callback_set(mqtt_handler, mqtt_cb_disconnect);
 
     ret = mosquitto_connect(mqtt_handler, mqtt_host, mqtt_port, keepalive_seconds);
