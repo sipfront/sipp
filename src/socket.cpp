@@ -520,6 +520,7 @@ void mqtt_cb_log(struct mosquitto *mosq, void *userdata,
 void mqtt_cb_connect(struct mosquitto *mosq, void *userdata, int result)
 {
     if (!result) {
+        mqtt_ready = true;
         if (mqtt_ctrl) {
             mosquitto_subscribe(mosq, NULL, mqtt_ctrl_topic, 2);
         }
@@ -538,10 +539,30 @@ void mqtt_cb_disconnect(struct mosquitto *mosq, void *userdat, int rc)
 void mqtt_cb_msg(struct mosquitto *mosq, void *userdata,
                   const struct mosquitto_message *msg)
 {
-    // agranig: TODO: implement ctrl cmd handling via mqtt here
-    WARNING("MQTT Received message on topic: %s\n", msg->topic);
-    if(msg->payload != NULL){
-        WARNING("Received MQTT Payload: %s\n", (char *) msg->payload);
+    int ret;
+    const char* bufrcv;
+
+    if (!msg->payload) {
+        WARNING("MQTT received null payload on ctrl topic, ignoring...\n");
+        return;
+    }
+
+    bufrcv = (const char*) msg->payload;
+    ret = strlen(bufrcv);
+
+    if (bufrcv[0] == 'c') {
+        /* No 'c', but we need one for '\0'. */
+        char *command = (char *)malloc(ret);
+        if (!command) {
+            ERROR("Out of memory allocated command buffer.");
+            return;
+        }
+        memcpy(command, bufrcv + 1, ret - 1);
+        command[ret - 1] = '\0';
+        process_command(command);
+        free(command);
+    } else {
+        process_key(bufrcv[0]);
     }
 }
 

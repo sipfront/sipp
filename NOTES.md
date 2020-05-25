@@ -4,10 +4,12 @@
 
 * as an operator, I want to launch an idle sipp instance
 * as an operator, I want to load a scenario via mqtt
-* as an operator, I want to control sipp via mqtt
+* DONE - as an operator, I want to control sipp via mqtt
 * DONE - as an operator, I want to receive stats via mqtt
+* as an operator, I want to receive error logs via mqtt
 
 * as an operator, I want to configure the mqtt password as sipp cmd line args
+* as an operator, when sending 'q' I want a final report (currently erroring out with bad fd)
 
 ## Overall sipp features to look at
 

@@ -60,6 +60,9 @@ extern char** environ;
 
 extern SIPpSocket *ctrl_socket;
 extern SIPpSocket *stdin_socket;
+#ifdef USE_MQTT
+extern SIPpSocket *mqtt_socket;
+#endif
 
 /* These could be local to main, but for the option processing table. */
 static int argiFileName;
@@ -528,12 +531,17 @@ static void traffic_thread()
 #ifdef RTP_STREAM
                 rtpstream_shutdown();
 #endif
+
                 /* Reverse order shutdown, because deleting reorders the
                  * sockets list. */
                 for (int i = pollnfds - 1; i >= 0; --i) {
                     sockets[i]->close();
                     if (sockets[i] == ctrl_socket) {
                         ctrl_socket = NULL;
+#ifdef USE_MQTT
+                    if (sockets[i] == mqtt_socket)
+                        mqtt_socket = NULL;
+#endif
                     } else if (sockets[i] == stdin_socket) {
                         stdin_socket = NULL;
                     }
@@ -544,6 +552,7 @@ static void traffic_thread()
                 if (useScreenf == 1) {
                     print_screens();
                 }
+
                 return;
             }
         }
