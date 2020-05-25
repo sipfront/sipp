@@ -393,6 +393,7 @@ struct sipp_option options_table[] = {
 #ifdef USE_MQTT
     {"mqtt_stats", "Use MQTT instead of CSV for stats.", SIPP_OPTION_BOOL, &mqtt_stats, 1},
     {"mqtt_stats_topic", "Set the MQTT topic for publishing stats. Default is '/sipp/stats'", SIPP_OPTION_STRING, &mqtt_stats_topic, 1},
+    {"mqtt_rttstats_topic", "Set the MQTT topic for publishing rtt stats. Default is '/sipp/rttstats'", SIPP_OPTION_STRING, &mqtt_rttstats_topic, 1},
     {"mqtt_ctrl", "Use MQTT instead of UDP for remote control.", SIPP_OPTION_BOOL, &mqtt_ctrl, 1},
     {"mqtt_ctrl_topic", "Set the MQTT topic for subscribing to control commands. Default is '/sipp/ctrl'", SIPP_OPTION_STRING, &mqtt_ctrl_topic, 1},
     {"mqtt_host", "Set the hostname of the MQTT broker. Default is 'localhost'", SIPP_OPTION_STRING, &mqtt_host, 1},

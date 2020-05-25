@@ -24,6 +24,10 @@
 
 #include "mqtt_stat.hpp"
 
+#define JQ(k) "\"" #k "\":\""
+#define JQV(k, v) JQ(k) << (v) << "\""
+#define JQC(k, v) JQV(k, v) << ","
+
 /*
     __________________________________________________________________________
 
@@ -75,9 +79,6 @@ void MQTTStat::dumpData ()
                            1000*(float)numberOfCall / (float)localElapsedTime :
                            0.0);
 
-#define JQ(k) "\"" #k "\":\""
-#define JQV(k, v) JQ(k) << (v) << "\""
-#define JQC(k, v) JQV(k, v) << ","
     jsonData
         << "{"
         << JQC(StartTime, formatTime(&M_startTime))
@@ -150,7 +151,7 @@ void MQTTStat::dumpData ()
         << JQC(WatchdogMinor(C), M_G_counters[CPT_G_C_WatchdogMinor - E_NB_COUNTER - 1]);
 
     for (int i = 1; i <= nRtds(); i++) {
-        jsonData 
+        jsonData
             << "\"ResponseTime" << M_revRtdMap[i] << "(P)\":\""
             << msToHHMMSSus((unsigned long)computeRtdMean(i, GENERIC_PL)) << "\","
             << "\"ResponseTime" << M_revRtdMap[i] << "(C)\":\""
@@ -188,22 +189,25 @@ void MQTTStat::dumpData ()
         jsonData << "\"" << "CallLengthRepartition" << "_<" << M_CallLengthRepartition[j].borderMax << "\":\"" << M_CallLengthRepartition[j].nbInThisBorder << "\",";
     }
     jsonData << "\"" << "CallLengthRepartition" << "_>=" << M_CallLengthRepartition[M_SizeOfCallLengthRepartition - 1].borderMax << "\":\"" << M_CallLengthRepartition[M_SizeOfCallLengthRepartition - 1].nbInThisBorder << "\"";
-   
-   jsonData << "}" << endl;
+
+    jsonData << "}" << endl;
 
     std::string jsonDataStr = jsonData.str();
 
     ret = mosquitto_publish(mqtt_handler, NULL, mqtt_stats_topic,
-				   jsonDataStr.length(), jsonDataStr.c_str(),
+                   jsonDataStr.length(), jsonDataStr.c_str(),
                    2, false);
-	if (ret != MOSQ_ERR_SUCCESS) {
-		WARNING("MQTT: failed to publish message: %s\n", mosquitto_strerror(ret));
-	}
+    if (ret != MOSQ_ERR_SUCCESS) {
+        WARNING("MQTT: failed to publish stats: %s\n", mosquitto_strerror(ret));
+    }
 
 }
 
 void MQTTStat::dumpDataRtt ()
 {
+    std::stringstream jsonData;
+    int ret;
+
     WARNING("MQTTStat::dumpDataRtt\n");
 
     if (mqtt_handler == NULL) {
@@ -211,30 +215,43 @@ void MQTTStat::dumpDataRtt ()
         exit(EXIT_FATAL_ERROR);
     }
 
-    WARNING("MQTTStat::dumpDataRtt data goes here\n");
-    return;
-
-    if(M_headerAlreadyDisplayedRtt == false) {
-        (*M_outputStreamRtt) << "Date_ms" << stat_delimiter
-                             << "response_time_ms" << stat_delimiter
-                             << "rtd_no" << endl;
-        M_headerAlreadyDisplayedRtt = true;
+    jsonData
+        << "{"
+        << "\"Date_ms\":[";
+    for (unsigned int i = 0; i < M_counterDumpRespTime ; i++) {
+        jsonData << "\"" << M_dumpRespTime[i].date << "\"";
+        if (i < M_counterDumpRespTime - 1)
+            jsonData << ",";
+        M_dumpRespTime[i].date = 0.0;
     }
 
-    for (unsigned int L_i = 0; L_i < M_counterDumpRespTime ; L_i ++) {
-        (*M_outputStreamRtt) <<  M_dumpRespTime[L_i].date   << stat_delimiter ;
-        (*M_outputStreamRtt) <<  M_dumpRespTime[L_i].rtt    << stat_delimiter ;
-        (*M_outputStreamRtt) <<  M_revRtdMap[M_dumpRespTime[L_i].rtd_no] << endl;
-        (*M_outputStreamRtt).flush();
-        M_dumpRespTime[L_i].date = 0.0;
-        M_dumpRespTime[L_i].rtt = 0.0;
-        M_dumpRespTime[L_i].rtd_no = 0;
+    jsonData << "],\"response_time_ms\":[";
+    for (unsigned int i = 0; i < M_counterDumpRespTime ; i++) {
+        jsonData << "\"" << M_dumpRespTime[i].rtt << "\"";
+        if (i < M_counterDumpRespTime - 1)
+            jsonData << ",";
+        M_dumpRespTime[i].rtt = 0.0;
     }
 
-    // flushing the output file
-    (*M_outputStreamRtt).flush();
+    jsonData << "],\"rtd_no\":[";
+    for (unsigned int i = 0; i < M_counterDumpRespTime ; i++) {
+        jsonData << "\"" << M_revRtdMap[M_dumpRespTime[i].rtd_no] << "\"";
+        if (i < M_counterDumpRespTime - 1)
+            jsonData << ",";
+        M_dumpRespTime[i].rtd_no = 0;
+    }
+    jsonData << "]}" << endl;
 
     M_counterDumpRespTime = 0;
+
+    std::string jsonDataStr = jsonData.str();
+
+    ret = mosquitto_publish(mqtt_handler, NULL, mqtt_rttstats_topic,
+                   jsonDataStr.length(), jsonDataStr.c_str(),
+                   2, false);
+    if (ret != MOSQ_ERR_SUCCESS) {
+        WARNING("MQTT: failed to publish rtt stats: %s\n", mosquitto_strerror(ret));
+    }
 }
 
 
