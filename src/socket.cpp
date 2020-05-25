@@ -519,11 +519,8 @@ void mqtt_cb_log(struct mosquitto *mosq, void *userdata,
 
 void mqtt_cb_connect(struct mosquitto *mosq, void *userdata, int result)
 {
-    WARNING("MQTT connect callback fired\n");
     if (!result) {
-        WARNING("MQTT connect callback checking ctrl topic\n");
         if (mqtt_ctrl) {
-            WARNING("MQTT connect callback subscribing to ctrl topic '%s'\n", mqtt_ctrl_topic);
             mosquitto_subscribe(mosq, NULL, mqtt_ctrl_topic, 2);
         }
     }
@@ -532,23 +529,16 @@ void mqtt_cb_connect(struct mosquitto *mosq, void *userdata, int result)
     }
 }
 
-void mqtt_cb_subscribe(struct mosquitto *mosq, void *userdata, int mid,
-                        int qos_count, const int *granted_qos)
-{
-    WARNING("MQTT subscribed (mid: %d): %d\n", mid, granted_qos[0]);
-    for (int i = 1; i < qos_count; i++) {
-        WARNING("MQTT\t %d", granted_qos[i]);
-    }
-}
-
 void mqtt_cb_disconnect(struct mosquitto *mosq, void *userdat, int rc)
 {
+    // agranig: TODO: if/how do we want to handle this?
     WARNING("MQTT disconnect, error: %d: %s\n", rc, mosquitto_strerror(rc));
 }
 
 void mqtt_cb_msg(struct mosquitto *mosq, void *userdata,
                   const struct mosquitto_message *msg)
 {
+    // agranig: TODO: implement ctrl cmd handling via mqtt here
     WARNING("MQTT Received message on topic: %s\n", msg->topic);
     if(msg->payload != NULL){
         WARNING("Received MQTT Payload: %s\n", (char *) msg->payload);
@@ -578,7 +568,7 @@ void setup_mqtt_socket()
     }
     */
 
-    mosquitto_log_callback_set(mqtt_handler, mqtt_cb_log);
+    //mosquitto_log_callback_set(mqtt_handler, mqtt_cb_log);
     mosquitto_connect_callback_set(mqtt_handler, mqtt_cb_connect);
     mosquitto_message_callback_set(mqtt_handler, mqtt_cb_msg);
     mosquitto_subscribe_callback_set(mqtt_handler, mqtt_cb_subscribe);
@@ -602,7 +592,6 @@ int handle_mqtt_socket()
 
     ret = mosquitto_loop_read(mqtt_handler, 1);
     if (ret == MOSQ_ERR_CONN_LOST) {
-        WARNING("Reconnecting MQTT socket\n");
         // TODO: agranig: do we need to somehow "close" socket manually?
         delete mqtt_socket;
         ret = mosquitto_reconnect(mqtt_handler);

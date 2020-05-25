@@ -55,8 +55,6 @@ void MQTTStat::dumpData ()
     unsigned long numberOfCall;
     std::stringstream jsonData;
 
-    WARNING("MQTTStat::dumpData\n");
-
     if (mqtt_handler == NULL) {
         cerr << "Unable to use uninitialized MQTT handler!" << endl;
         exit(EXIT_FATAL_ERROR);
@@ -207,8 +205,6 @@ void MQTTStat::dumpDataRtt ()
 {
     std::stringstream jsonData;
     int ret;
-
-    WARNING("MQTTStat::dumpDataRtt\n");
 
     if (mqtt_handler == NULL) {
         cerr << "Unable to use uninitialized MQTT handler!" << endl;
