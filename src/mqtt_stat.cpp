@@ -79,233 +79,117 @@ void MQTTStat::dumpData ()
 #define JQV(k, v) JQ(k) << (v) << "\""
 #define JQC(k, v) JQV(k, v) << ","
     jsonData
-            << "{"
-            << JQC(StartTime, formatTime(&M_startTime))
-            << JQC(LastResetTime, formatTime(&M_plStartTime))
-            << JQC(CurrentTime, formatTime(&currentTime))
-            << JQC(ElapsedTime(P), msToHHMMSS(localElapsedTime))
-            << JQC(ElapsedTime(C), msToHHMMSS(globalElapsedTime))
-            << JQC(TargetRate, (users >= 0) ? users : rate)
-            << JQC(CallRate(P), realInstantCallRate)
-            << JQC(CallRate(C), averageCallRate)
-            << JQC(IncomingCall(P), M_counters[CPT_PL_IncomingCallCreated])
-            << JQC(IncomingCall(C), M_counters[CPT_C_IncomingCallCreated])
-            << JQC(OutgoingCall(P), M_counters[CPT_PL_OutgoingCallCreated])
-            << JQC(OutgoingCall(C), M_counters[CPT_C_OutgoingCallCreated])
-            << JQC(TotalCallCreated, (M_counters[CPT_C_IncomingCallCreated] + M_counters[CPT_C_OutgoingCallCreated]))
-            << JQC(CurrentCall, M_counters[CPT_C_CurrentCall])
-            << JQC(SuccessfulCall(P), M_counters[CPT_PL_SuccessfulCall])
-            << JQC(SuccessfulCall(C), M_counters[CPT_C_SuccessfulCall])
-            << JQC(FailedCall(P), M_counters[CPT_PL_FailedCall])
-            << JQC(FailedCall(C), M_counters[CPT_C_FailedCall])
-            << JQC(FailedCannotSendMessage(P), M_counters[CPT_PL_FailedCallCannotSendMessage])
-            << JQC(FailedCannotSendMessage(C), M_counters[CPT_C_FailedCallCannotSendMessage])
-            << JQC(FailedMaxUDPRetrans(P), M_counters[CPT_PL_FailedCallMaxUdpRetrans])
-            << JQC(FailedMaxUDPRetrans(C), M_counters[CPT_C_FailedCallMaxUdpRetrans])
-            << JQC(FailedTcpConnect(P), M_counters[CPT_PL_FailedCallTcpConnect])
-            << JQC(FailedTcpConnect(C), M_counters[CPT_C_FailedCallTcpConnect])
-            << JQC(FailedTcpClosed(P), M_counters[CPT_PL_FailedCallTcpClosed])
-            << JQC(FailedTcpClosed(C), M_counters[CPT_C_FailedCallTcpClosed])
-            << JQC(FailedUnexpectedMessage(P), M_counters[CPT_PL_FailedCallUnexpectedMessage])
-            << JQC(FailedUnexpectedMessage(C), M_counters[CPT_C_FailedCallUnexpectedMessage])
-            << JQC(FailedCallRejected(P), M_counters[CPT_PL_FailedCallCallRejected])
-            << JQC(FailedCallRejected(C), M_counters[CPT_C_FailedCallCallRejected])
-            << JQC(FailedCmdNotSent(P), M_counters[CPT_PL_FailedCallCmdNotSent])
-            << JQC(FailedCmdNotSent(C), M_counters[CPT_C_FailedCallCmdNotSent])
-            << JQC(FailedRegexpDoesntMatch(P), M_counters[CPT_PL_FailedCallRegexpDoesntMatch])
-            << JQC(FailedRegexpDoesntMatch(C), M_counters[CPT_C_FailedCallRegexpDoesntMatch])
-            << JQC(FailedRegexpShouldntMatch(P), M_counters[CPT_PL_FailedCallRegexpShouldntMatch])
-            << JQC(FailedRegexpShouldntMatch(C), M_counters[CPT_C_FailedCallRegexpShouldntMatch])
-            << JQC(FailedRegexpHdrNotFound(P), M_counters[CPT_PL_FailedCallRegexpHdrNotFound])
-            << JQC(FailedRegexpHdrNotFound(C), M_counters[CPT_C_FailedCallRegexpHdrNotFound])
-            << JQC(FailedOutboundCongestion(P), M_counters[CPT_PL_FailedOutboundCongestion])
-            << JQC(FailedOutboundCongestion(C), M_counters[CPT_C_FailedOutboundCongestion])
-            << JQC(FailedTimeoutOnRecv(P), M_counters[CPT_PL_FailedTimeoutOnRecv])
-            << JQC(FailedTimeoutOnRecv(C), M_counters[CPT_C_FailedTimeoutOnRecv])
-            << JQC(FailedTimeoutOnSend(P), M_counters[CPT_PL_FailedTimeoutOnSend])
-            << JQC(FailedTimeoutOnSend(C), M_counters[CPT_C_FailedTimeoutOnSend])
-            << JQC(FailedTestDoesntMatch(P), M_counters[CPT_PL_FailedCallTestDoesntMatch])
-            << JQC(FailedTestDoesntMatch(C), M_counters[CPT_C_FailedCallTestDoesntMatch])
-            << JQC(FailedTestShouldntMatch(P), M_counters[CPT_PL_FailedCallTestShouldntMatch])
-            << JQC(FailedTestShouldntMatch(C), M_counters[CPT_C_FailedCallTestShouldntMatch])
-            << JQC(FailedStrcmpDoesntMatch(P), M_counters[CPT_PL_FailedCallStrcmpDoesntMatch])
-            << JQC(FailedStrcmpDoesntMatch(C), M_counters[CPT_C_FailedCallStrcmpDoesntMatch])
-            << JQC(FailedStrcmpShouldntMatch(P), M_counters[CPT_PL_FailedCallStrcmpShouldntMatch])
-            << JQC(FailedStrcmpShouldntMatch(C), M_counters[CPT_C_FailedCallStrcmpShouldntMatch])
-            << JQC(OutOfCallMsgs(P), M_G_counters[CPT_G_PL_OutOfCallMsgs - E_NB_COUNTER - 1])
-            << JQC(OutOfCallMsgs(C), M_G_counters[CPT_G_C_OutOfCallMsgs - E_NB_COUNTER - 1])
-            << JQC(DeadCallMsgs(P), M_G_counters[CPT_G_PL_DeadCallMsgs - E_NB_COUNTER - 1])
-            << JQC(DeadCallMsgs(C), M_G_counters[CPT_G_C_DeadCallMsgs - E_NB_COUNTER - 1])
-            << JQC(Retransmissions(P), M_counters[CPT_PL_Retransmissions])
-            << JQC(Retransmissions(C), M_counters[CPT_C_Retransmissions])
-            << JQC(AutoAnswered(P), M_G_counters[CPT_G_PL_AutoAnswered - E_NB_COUNTER - 1])
-            << JQC(AutoAnswered(C), M_G_counters[CPT_G_C_AutoAnswered - E_NB_COUNTER - 1])
-            << JQC(Warnings(P), M_G_counters[CPT_G_PL_Warnings - E_NB_COUNTER - 1])
-            << JQC(Warnings(C), M_G_counters[CPT_G_C_Warnings - E_NB_COUNTER - 1])
-            << JQC(FatalErrors(P), M_G_counters[CPT_G_PL_FatalErrors - E_NB_COUNTER - 1])
-            << JQC(FatalErrors(C), M_G_counters[CPT_G_C_FatalErrors - E_NB_COUNTER - 1])
-            << JQC(WatchdogMajor(P), M_G_counters[CPT_G_PL_WatchdogMajor - E_NB_COUNTER - 1])
-            << JQC(WatchdogMajor(C), M_G_counters[CPT_G_C_WatchdogMajor - E_NB_COUNTER - 1])
-            << JQC(WatchdogMinor(P), M_G_counters[CPT_G_PL_WatchdogMinor - E_NB_COUNTER - 1])
-            << JQV(WatchdogMinor(C), M_G_counters[CPT_G_C_WatchdogMinor - E_NB_COUNTER - 1])
-            << "}" << endl;
+        << "{"
+        << JQC(StartTime, formatTime(&M_startTime))
+        << JQC(LastResetTime, formatTime(&M_plStartTime))
+        << JQC(CurrentTime, formatTime(&currentTime))
+        << JQC(ElapsedTime(P), msToHHMMSS(localElapsedTime))
+        << JQC(ElapsedTime(C), msToHHMMSS(globalElapsedTime))
+        << JQC(TargetRate, (users >= 0) ? users : rate)
+        << JQC(CallRate(P), realInstantCallRate)
+        << JQC(CallRate(C), averageCallRate)
+        << JQC(IncomingCall(P), M_counters[CPT_PL_IncomingCallCreated])
+        << JQC(IncomingCall(C), M_counters[CPT_C_IncomingCallCreated])
+        << JQC(OutgoingCall(P), M_counters[CPT_PL_OutgoingCallCreated])
+        << JQC(OutgoingCall(C), M_counters[CPT_C_OutgoingCallCreated])
+        << JQC(TotalCallCreated, (M_counters[CPT_C_IncomingCallCreated] + M_counters[CPT_C_OutgoingCallCreated]))
+        << JQC(CurrentCall, M_counters[CPT_C_CurrentCall])
+        << JQC(SuccessfulCall(P), M_counters[CPT_PL_SuccessfulCall])
+        << JQC(SuccessfulCall(C), M_counters[CPT_C_SuccessfulCall])
+        << JQC(FailedCall(P), M_counters[CPT_PL_FailedCall])
+        << JQC(FailedCall(C), M_counters[CPT_C_FailedCall])
+        << JQC(FailedCannotSendMessage(P), M_counters[CPT_PL_FailedCallCannotSendMessage])
+        << JQC(FailedCannotSendMessage(C), M_counters[CPT_C_FailedCallCannotSendMessage])
+        << JQC(FailedMaxUDPRetrans(P), M_counters[CPT_PL_FailedCallMaxUdpRetrans])
+        << JQC(FailedMaxUDPRetrans(C), M_counters[CPT_C_FailedCallMaxUdpRetrans])
+        << JQC(FailedTcpConnect(P), M_counters[CPT_PL_FailedCallTcpConnect])
+        << JQC(FailedTcpConnect(C), M_counters[CPT_C_FailedCallTcpConnect])
+        << JQC(FailedTcpClosed(P), M_counters[CPT_PL_FailedCallTcpClosed])
+        << JQC(FailedTcpClosed(C), M_counters[CPT_C_FailedCallTcpClosed])
+        << JQC(FailedUnexpectedMessage(P), M_counters[CPT_PL_FailedCallUnexpectedMessage])
+        << JQC(FailedUnexpectedMessage(C), M_counters[CPT_C_FailedCallUnexpectedMessage])
+        << JQC(FailedCallRejected(P), M_counters[CPT_PL_FailedCallCallRejected])
+        << JQC(FailedCallRejected(C), M_counters[CPT_C_FailedCallCallRejected])
+        << JQC(FailedCmdNotSent(P), M_counters[CPT_PL_FailedCallCmdNotSent])
+        << JQC(FailedCmdNotSent(C), M_counters[CPT_C_FailedCallCmdNotSent])
+        << JQC(FailedRegexpDoesntMatch(P), M_counters[CPT_PL_FailedCallRegexpDoesntMatch])
+        << JQC(FailedRegexpDoesntMatch(C), M_counters[CPT_C_FailedCallRegexpDoesntMatch])
+        << JQC(FailedRegexpShouldntMatch(P), M_counters[CPT_PL_FailedCallRegexpShouldntMatch])
+        << JQC(FailedRegexpShouldntMatch(C), M_counters[CPT_C_FailedCallRegexpShouldntMatch])
+        << JQC(FailedRegexpHdrNotFound(P), M_counters[CPT_PL_FailedCallRegexpHdrNotFound])
+        << JQC(FailedRegexpHdrNotFound(C), M_counters[CPT_C_FailedCallRegexpHdrNotFound])
+        << JQC(FailedOutboundCongestion(P), M_counters[CPT_PL_FailedOutboundCongestion])
+        << JQC(FailedOutboundCongestion(C), M_counters[CPT_C_FailedOutboundCongestion])
+        << JQC(FailedTimeoutOnRecv(P), M_counters[CPT_PL_FailedTimeoutOnRecv])
+        << JQC(FailedTimeoutOnRecv(C), M_counters[CPT_C_FailedTimeoutOnRecv])
+        << JQC(FailedTimeoutOnSend(P), M_counters[CPT_PL_FailedTimeoutOnSend])
+        << JQC(FailedTimeoutOnSend(C), M_counters[CPT_C_FailedTimeoutOnSend])
+        << JQC(FailedTestDoesntMatch(P), M_counters[CPT_PL_FailedCallTestDoesntMatch])
+        << JQC(FailedTestDoesntMatch(C), M_counters[CPT_C_FailedCallTestDoesntMatch])
+        << JQC(FailedTestShouldntMatch(P), M_counters[CPT_PL_FailedCallTestShouldntMatch])
+        << JQC(FailedTestShouldntMatch(C), M_counters[CPT_C_FailedCallTestShouldntMatch])
+        << JQC(FailedStrcmpDoesntMatch(P), M_counters[CPT_PL_FailedCallStrcmpDoesntMatch])
+        << JQC(FailedStrcmpDoesntMatch(C), M_counters[CPT_C_FailedCallStrcmpDoesntMatch])
+        << JQC(FailedStrcmpShouldntMatch(P), M_counters[CPT_PL_FailedCallStrcmpShouldntMatch])
+        << JQC(FailedStrcmpShouldntMatch(C), M_counters[CPT_C_FailedCallStrcmpShouldntMatch])
+        << JQC(OutOfCallMsgs(P), M_G_counters[CPT_G_PL_OutOfCallMsgs - E_NB_COUNTER - 1])
+        << JQC(OutOfCallMsgs(C), M_G_counters[CPT_G_C_OutOfCallMsgs - E_NB_COUNTER - 1])
+        << JQC(DeadCallMsgs(P), M_G_counters[CPT_G_PL_DeadCallMsgs - E_NB_COUNTER - 1])
+        << JQC(DeadCallMsgs(C), M_G_counters[CPT_G_C_DeadCallMsgs - E_NB_COUNTER - 1])
+        << JQC(Retransmissions(P), M_counters[CPT_PL_Retransmissions])
+        << JQC(Retransmissions(C), M_counters[CPT_C_Retransmissions])
+        << JQC(AutoAnswered(P), M_G_counters[CPT_G_PL_AutoAnswered - E_NB_COUNTER - 1])
+        << JQC(AutoAnswered(C), M_G_counters[CPT_G_C_AutoAnswered - E_NB_COUNTER - 1])
+        << JQC(Warnings(P), M_G_counters[CPT_G_PL_Warnings - E_NB_COUNTER - 1])
+        << JQC(Warnings(C), M_G_counters[CPT_G_C_Warnings - E_NB_COUNTER - 1])
+        << JQC(FatalErrors(P), M_G_counters[CPT_G_PL_FatalErrors - E_NB_COUNTER - 1])
+        << JQC(FatalErrors(C), M_G_counters[CPT_G_C_FatalErrors - E_NB_COUNTER - 1])
+        << JQC(WatchdogMajor(P), M_G_counters[CPT_G_PL_WatchdogMajor - E_NB_COUNTER - 1])
+        << JQC(WatchdogMajor(C), M_G_counters[CPT_G_C_WatchdogMajor - E_NB_COUNTER - 1])
+        << JQC(WatchdogMinor(P), M_G_counters[CPT_G_PL_WatchdogMinor - E_NB_COUNTER - 1])
+        << JQC(WatchdogMinor(C), M_G_counters[CPT_G_C_WatchdogMinor - E_NB_COUNTER - 1]);
 
-
-        ////// agranig for now util here
-
-    /*
-        for (int i = 1; i <= nRtds(); i++) {
-            char s_P[80];
-            char s_C[80];
-
-            sprintf(s_P, "ResponseTime%s(P)%s", M_revRtdMap[i], stat_delimiter);
-            sprintf(s_C, "ResponseTime%s(C)%s", M_revRtdMap[i], stat_delimiter);
-
-            (*M_outputStream) << s_P << s_C;
-
-            sprintf(s_P, "ResponseTime%sStDev(P)%s", M_revRtdMap[i], stat_delimiter);
-            sprintf(s_C, "ResponseTime%sStDev(C)%s", M_revRtdMap[i], stat_delimiter);
-
-            (*M_outputStream) << s_P << s_C;
-        }
-
-        (*M_outputStream) << "CallLength(P)" << stat_delimiter
-                          << "CallLength(C)" << stat_delimiter;
-        (*M_outputStream) << "CallLengthStDev(P)" << stat_delimiter
-                          << "CallLengthStDev(C)" << stat_delimiter;
-        for (unsigned int i = 1; i < M_genericMap.size() + 1; i++) {
-            (*M_outputStream) << M_revGenericMap[i] << "(P)" << stat_delimiter;
-            (*M_outputStream) << M_revGenericMap[i] << "(C)" << stat_delimiter;
-        }
-        for (int i = 1; i <= nRtds(); i++) {
-            char s[80];
-
-            sprintf(s, "ResponseTimeRepartition%s", M_revRtdMap[i]);
-            (*M_outputStream) << sRepartitionHeader(M_ResponseTimeRepartition[i - 1],
-                                                    M_SizeOfResponseTimeRepartition,
-                                                    s);
-        }
-        (*M_outputStream) << sRepartitionHeader(M_CallLengthRepartition,
-                                                M_SizeOfCallLengthRepartition,
-                                                "CallLengthRepartition");
-        (*M_outputStream) << endl;
-        M_headerAlreadyDisplayed = true;
-    }
-
-    // content
-    (*M_outputStream) << formatTime(&M_startTime)               << stat_delimiter;
-    (*M_outputStream) << formatTime(&M_plStartTime)             << stat_delimiter;
-    (*M_outputStream) << formatTime(&currentTime)               << stat_delimiter
-                      << msToHHMMSS(localElapsedTime)           << stat_delimiter;
-    (*M_outputStream) << msToHHMMSS(globalElapsedTime)          << stat_delimiter;
-    if (users >= 0) {
-        (*M_outputStream) << users                                << stat_delimiter;
-    } else {
-        (*M_outputStream) << rate                                 << stat_delimiter;
-    }
-    (*M_outputStream) << realInstantCallRate                    << stat_delimiter
-                      << averageCallRate                        << stat_delimiter
-                      << M_counters[CPT_PL_IncomingCallCreated] << stat_delimiter
-                      << M_counters[CPT_C_IncomingCallCreated]  << stat_delimiter
-                      << M_counters[CPT_PL_OutgoingCallCreated] << stat_delimiter
-                      << M_counters[CPT_C_OutgoingCallCreated]  << stat_delimiter
-                      << (M_counters[CPT_C_IncomingCallCreated]+
-                          M_counters[CPT_C_OutgoingCallCreated])<< stat_delimiter
-                      << M_counters[CPT_C_CurrentCall]          << stat_delimiter
-                      << M_counters[CPT_PL_SuccessfulCall]      << stat_delimiter
-                      << M_counters[CPT_C_SuccessfulCall]       << stat_delimiter
-                      << M_counters[CPT_PL_FailedCall]          << stat_delimiter
-                      << M_counters[CPT_C_FailedCall]           << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallCannotSendMessage]   << stat_delimiter
-                      << M_counters[CPT_C_FailedCallCannotSendMessage]    << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallMaxUdpRetrans]       << stat_delimiter
-                      << M_counters[CPT_C_FailedCallMaxUdpRetrans     ]   << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallTcpConnect]          << stat_delimiter
-                      << M_counters[CPT_C_FailedCallTcpConnect]           << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallTcpClosed]          << stat_delimiter
-                      << M_counters[CPT_C_FailedCallTcpClosed]           << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallUnexpectedMessage]   << stat_delimiter
-                      << M_counters[CPT_C_FailedCallUnexpectedMessage]    << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallCallRejected]        << stat_delimiter
-                      << M_counters[CPT_C_FailedCallCallRejected]         << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallCmdNotSent]          << stat_delimiter
-                      << M_counters[CPT_C_FailedCallCmdNotSent]           << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallRegexpDoesntMatch]   << stat_delimiter
-                      << M_counters[CPT_C_FailedCallRegexpDoesntMatch]    << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallRegexpShouldntMatch] << stat_delimiter
-                      << M_counters[CPT_C_FailedCallRegexpShouldntMatch]  << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallRegexpHdrNotFound]   << stat_delimiter
-                      << M_counters[CPT_C_FailedCallRegexpHdrNotFound]    << stat_delimiter
-                      << M_counters[CPT_PL_FailedOutboundCongestion]      << stat_delimiter
-                      << M_counters[CPT_C_FailedOutboundCongestion]       << stat_delimiter
-                      << M_counters[CPT_PL_FailedTimeoutOnRecv]           << stat_delimiter
-                      << M_counters[CPT_C_FailedTimeoutOnRecv]            << stat_delimiter
-                      << M_counters[CPT_PL_FailedTimeoutOnSend]           << stat_delimiter
-                      << M_counters[CPT_C_FailedTimeoutOnSend]            << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallTestDoesntMatch]   << stat_delimiter
-                      << M_counters[CPT_C_FailedCallTestDoesntMatch]    << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallTestShouldntMatch] << stat_delimiter
-                      << M_counters[CPT_C_FailedCallTestShouldntMatch]  << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallStrcmpDoesntMatch]   << stat_delimiter
-                      << M_counters[CPT_C_FailedCallStrcmpDoesntMatch]    << stat_delimiter
-                      << M_counters[CPT_PL_FailedCallStrcmpShouldntMatch] << stat_delimiter
-                      << M_counters[CPT_C_FailedCallStrcmpShouldntMatch]  << stat_delimiter
-                      << M_G_counters[CPT_G_PL_OutOfCallMsgs - E_NB_COUNTER - 1]                << stat_delimiter
-                      << M_G_counters[CPT_G_C_OutOfCallMsgs - E_NB_COUNTER - 1]                 << stat_delimiter
-                      << M_G_counters[CPT_G_PL_DeadCallMsgs - E_NB_COUNTER - 1]                 << stat_delimiter
-                      << M_G_counters[CPT_G_C_DeadCallMsgs - E_NB_COUNTER - 1]                  << stat_delimiter
-                      << M_counters[CPT_PL_Retransmissions]               << stat_delimiter
-                      << M_counters[CPT_C_Retransmissions]                << stat_delimiter
-                      << M_G_counters[CPT_G_PL_AutoAnswered - E_NB_COUNTER - 1]                  << stat_delimiter
-                      << M_G_counters[CPT_G_C_AutoAnswered - E_NB_COUNTER - 1]                   << stat_delimiter
-                      << M_G_counters[CPT_G_PL_Warnings - E_NB_COUNTER - 1]                  << stat_delimiter
-                      << M_G_counters[CPT_G_C_Warnings - E_NB_COUNTER - 1]                   << stat_delimiter
-                      << M_G_counters[CPT_G_PL_FatalErrors - E_NB_COUNTER - 1]                  << stat_delimiter
-                      << M_G_counters[CPT_G_C_FatalErrors - E_NB_COUNTER - 1]                   << stat_delimiter
-                      << M_G_counters[CPT_G_PL_WatchdogMajor - E_NB_COUNTER - 1]                  << stat_delimiter
-                      << M_G_counters[CPT_G_C_WatchdogMajor - E_NB_COUNTER - 1]                   << stat_delimiter
-                      << M_G_counters[CPT_G_PL_WatchdogMinor - E_NB_COUNTER - 1]                  << stat_delimiter
-                      << M_G_counters[CPT_G_C_WatchdogMinor - E_NB_COUNTER - 1]                   << stat_delimiter;
-
-    // SF917289 << M_counters[CPT_C_UnexpectedMessage]    << stat_delimiter;
     for (int i = 1; i <= nRtds(); i++) {
-        (*M_outputStream) << msToHHMMSSus( (unsigned long)computeRtdMean(i, GENERIC_PL)) << stat_delimiter;
-        (*M_outputStream) << msToHHMMSSus( (unsigned long)computeRtdMean(i, GENERIC_C)) << stat_delimiter;
-        (*M_outputStream) << msToHHMMSSus( (unsigned long)computeRtdStdev(i, GENERIC_PL)) << stat_delimiter;
-        (*M_outputStream) << msToHHMMSSus( (unsigned long)computeRtdStdev(i, GENERIC_C)) << stat_delimiter;
-    }
-    (*M_outputStream)
-            << msToHHMMSSus( (unsigned long)computeMean(CPT_PL_AverageCallLength_Sum, CPT_PL_NbOfCallUsedForAverageCallLength) ) << stat_delimiter;
-    (*M_outputStream)
-            << msToHHMMSSus( (unsigned long)computeMean(CPT_C_AverageCallLength_Sum, CPT_C_NbOfCallUsedForAverageCallLength) ) << stat_delimiter;
-    (*M_outputStream)
-            << msToHHMMSSus( (unsigned long)computeStdev(CPT_PL_AverageCallLength_Sum,
-                              CPT_PL_NbOfCallUsedForAverageCallLength,
-                              CPT_PL_AverageCallLength_Squares )) << stat_delimiter;
-    (*M_outputStream)
-            << msToHHMMSSus( (unsigned long)computeStdev(CPT_C_AverageCallLength_Sum,
-                              CPT_C_NbOfCallUsedForAverageCallLength,
-                              CPT_C_AverageCallLength_Squares )) << stat_delimiter;
-
-    for (unsigned int i = 0; i < M_genericMap.size(); i++) {
-        (*M_outputStream) << M_genericCounters[GENERIC_TYPES * i + GENERIC_PL] << stat_delimiter;
-        (*M_outputStream) << M_genericCounters[GENERIC_TYPES * i + GENERIC_C] << stat_delimiter;
+        jsonData 
+            << "\"ResponseTime" << M_revRtdMap[i] << "(P)\":\""
+            << msToHHMMSSus((unsigned long)computeRtdMean(i, GENERIC_PL)) << "\","
+            << "\"ResponseTime" << M_revRtdMap[i] << "(C)\":\""
+            << msToHHMMSSus((unsigned long)computeRtdMean(i, GENERIC_C)) << "\","
+            << "\"ResponseTime" << M_revRtdMap[i] << "StDev(P)\":\""
+            << msToHHMMSSus((unsigned long)computeRtdStdev(i, GENERIC_PL)) << "\","
+            << "\"ResponseTime" << M_revRtdMap[i] << "StDev(C)\":\""
+            << msToHHMMSSus((unsigned long)computeRtdStdev(i, GENERIC_C)) << "\",";
     }
 
-    for (int i = 0; i < nRtds(); i++) {
-        (*M_outputStream)
-                << sRepartitionInfo(M_ResponseTimeRepartition[i],
-                                    M_SizeOfResponseTimeRepartition);
+    jsonData
+        << JQC(CallLength(P), msToHHMMSSus((unsigned long)computeMean(CPT_PL_AverageCallLength_Sum, CPT_PL_NbOfCallUsedForAverageCallLength)))
+        << JQC(CallLength(C), msToHHMMSSus((unsigned long)computeMean(CPT_C_AverageCallLength_Sum, CPT_C_NbOfCallUsedForAverageCallLength)))
+        << JQC(CallLengthStDev(P), msToHHMMSSus((unsigned long)computeStdev(CPT_PL_AverageCallLength_Sum, CPT_PL_NbOfCallUsedForAverageCallLength, CPT_PL_AverageCallLength_Squares)))
+        << JQC(CallLengthStDev(C), msToHHMMSSus((unsigned long)computeStdev(CPT_C_AverageCallLength_Sum, CPT_C_NbOfCallUsedForAverageCallLength, CPT_C_AverageCallLength_Squares)));
+
+
+    for (unsigned int i = 1; i < M_genericMap.size() + 1; i++) {
+        jsonData
+            << "\"" << M_revGenericMap[i] << "(P)\":\"" << M_genericCounters[GENERIC_TYPES * i + GENERIC_PL] << "\","
+            << "\"" << M_revGenericMap[i] << "(C)\":\"" << M_genericCounters[GENERIC_TYPES * i + GENERIC_C] << "\",";
     }
-    (*M_outputStream)
-            << sRepartitionInfo(M_CallLengthRepartition,
-                                M_SizeOfCallLengthRepartition);
-    (*M_outputStream) << endl;
 
-    // flushing the output file to let the tail -f working !
-    (*M_outputStream).flush();
+    for (int i = 1; i <= nRtds(); i++) {
+        char s[80];
+        sprintf(s, "ResponseTimeRepartition%s", M_revRtdMap[i]);
 
-    */
+        for(int j = 0; j < (M_SizeOfResponseTimeRepartition - 1); j++) {
+            jsonData << "\"" << s << "_<" << M_ResponseTimeRepartition[i - 1][j].borderMax << "\":\"" << M_ResponseTimeRepartition[i - 1][j].nbInThisBorder << "\",";
+        }
+        jsonData << "\"" << s << "_>=" << M_ResponseTimeRepartition[i - 1][M_SizeOfResponseTimeRepartition - 1].borderMax << "\":\"" << M_ResponseTimeRepartition[i - 1][M_SizeOfResponseTimeRepartition - 1].nbInThisBorder << "\",";
+    }
+
+    for(int j = 0; j < (M_SizeOfCallLengthRepartition - 1); j++) {
+        jsonData << "\"" << "CallLengthRepartition" << "_<" << M_CallLengthRepartition[j].borderMax << "\":\"" << M_CallLengthRepartition[j].nbInThisBorder << "\",";
+    }
+    jsonData << "\"" << "CallLengthRepartition" << "_>=" << M_CallLengthRepartition[M_SizeOfCallLengthRepartition - 1].borderMax << "\":\"" << M_CallLengthRepartition[M_SizeOfCallLengthRepartition - 1].nbInThisBorder << "\"";
+   
+   jsonData << "}" << endl;
 
     std::string jsonDataStr = jsonData.str();
 
