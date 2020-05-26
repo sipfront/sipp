@@ -28,6 +28,10 @@
 
 ## How To
 
+### Load test MQTT broker
+
+https://github.com/etactica/mqtt-malaria
+
 ### Generate mosquitto password
 
 ```
@@ -40,3 +44,21 @@ sudo mosquitto_passwd -c /etc/mosquitto/passwd sipp
 mosquitto_pub -h localhost -u sipp -P $password -t /sipp/ctrl -m "cset rate 10"
 ```
 
+### Mosquitto config (without ssl)
+
+```
+cat /etc/mosquitto/conf.d/default.conf
+```
+```
+allow_anonymous false
+password_file /etc/mosquitto/passwd
+
+listener 1883 localhost
+
+listener 8083
+protocol websockets
+```
+
+### Test MQTT over websocket
+
+https://www.eclipse.org/paho/clients/js/utility/
