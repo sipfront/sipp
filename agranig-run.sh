@@ -1,7 +1,8 @@
 #!/bin/bash
 
 source mqtt-auth.conf
-UUID=$(uuidgen)
+#UUID=$(uuidgen)
+UUID='ecabb78c-5900-4c38-a63b-4e54ecadf642'
 
 ./sipp \
     -trace_stat -fd 3 \
