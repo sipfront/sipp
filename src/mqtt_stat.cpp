@@ -82,9 +82,9 @@ void MQTTStat::dumpData ()
 
     jsonData
         << "{"
-        << JQC(StartTime, formatTime(&M_startTime))
-        << JQC(LastResetTime, formatTime(&M_plStartTime))
-        << JQC(CurrentTime, formatTime(&currentTime))
+        << JQC(StartTime, formatTime(&M_startTime, true))
+        << JQC(LastResetTime, formatTime(&M_plStartTime, true))
+        << JQC(CurrentTime, formatTime(&currentTime, true))
         << JQC(ElapsedTime(P), msToHHMMSS(localElapsedTime))
         << JQC(ElapsedTime(C), msToHHMMSS(globalElapsedTime))
         << JQC(TargetRate, (users >= 0) ? users : rate)
