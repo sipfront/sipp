@@ -1,5 +1,13 @@
-FROM alpine:3.10
+FROM debian:stable
 
-RUN apk add --no-cache binutils make cmake gcc g++ ncurses-static libpcap-dev ncurses-dev gsl-dev mosquitto-dev
+RUN apt-get update && apt-get -y install \
+    build-essential cmake \
+    libncurses-dev libpcap-dev \
+    libgsl-dev libmosquitto-dev libssl-dev
 
-CMD cd /src && rm -f CMakeCache.txt && cmake . -DBUILD_STATIC=1 -DUSE_PCAP=1 -DUSE_GSL=1 -DUSE_MQTT=1 && make
+ADD . /src
+
+CMD cd /src && \
+    rm -f CMakeCache.txt && \
+    cmake . -DUSE_PCAP=1 -DUSE_GSL=1 -DUSE_MQTT=1 -DUSE_SSL=1 && \
+    make
