@@ -4,17 +4,19 @@ set -e
 
 PATH="/bin:/usr/bin"
 
+INSTANCE_UUID=$(uuidgen);
+
 if [ -z "$SFC_CREDENTIALS_API" ]; then
     echo "Missing env SFC_CREDENTIALS_API, aborting"
     exit 1
 fi
 CREDENTIALS_API="$SFC_CREDENTIALS_API"
 
-if [ -z "$SFC_UUID" ]; then
-    echo "Missing env SFC_UUID, aborting"
+if [ -z "$SFC_SESSION_UUID" ]; then
+    echo "Missing env SFC_SESSION_UUID, aborting"
     exit 1
 fi
-UUID="$SFC_UUID"
+SESSION_UUID="$SFC_SESSION_UUID"
 
 if [ -z "$SFC_TARGET" ]; then
     echo "Missing env SFC_TARGET, aborting"
@@ -61,7 +63,7 @@ if [ "$CREDENTIALS_CALLER" = "1" ]; then
         PARAMS="force_seq=$CREDENTIALS_CALLER_SEQ"
     fi
 
-    URL="${CREDENTIALS_API}/internal/sessions/${UUID}/credentials?${PARAMS}"
+    URL="${CREDENTIALS_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
     echo "Fetching caller credentials from '$URL' to '$CREDENTIALS_CALLER_FILE'"
     curl -H 'Accept: text/csv' "$URL" -o "$CREDENTIALS_CALLER_FILE"
 fi
@@ -71,7 +73,7 @@ if [ "$CREDENTIALS_CALLEE" = "1" ]; then
     if [ -n "$CREDENTIALS_CALLEE_SEQ" ]; then
         PARAMS="force_seq=$CREDENTIALS_CALLEE_SEQ"
     fi
-    URL="${CREDENTIALS_API}/internal/sessions/${UUID}/credentials?${PARAMS}"
+    URL="${CREDENTIALS_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
 
     echo "Fetching callee credentials from '$URL' to '$CREDENTIALS_CALLEE_FILE'"
     curl -H 'Accept: text/csv' "$URL" -o "$CREDENTIALS_CALLEE_FILE"
@@ -96,8 +98,10 @@ sipp \
     -base_cseq 1 \
     -trace_stat -fd 1 \
     -trace_rtt -rtt_freq 1 \
-    -mqtt_stats 1 -mqtt_stats_topic "/sipp/stats/$UUID/call" -mqtt_rttstats_topic "/sipp/stats/$UUID/rtt" \
-    -mqtt_ctrl 1 -mqtt_ctrl_topic '/sipp/ctrl' \
+    -mqtt_stats 1 \
+    -mqtt_stats_topic "/sipp/stats/$SESSION_UUID/call/$INSTANCE_UUID" \
+    -mqtt_rttstats_topic "/sipp/stats/$SESSION_UUID/rtt/$INSTANCE_UUID" \
+    -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/$SESSION_UUID" \
     $MQTT_HOST $MQTT_USER $MQTT_PASS \
     -trace_err \
     -r 1 \
