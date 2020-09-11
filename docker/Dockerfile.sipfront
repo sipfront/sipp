@@ -2,7 +2,7 @@ FROM debian:stable AS build-stage
 ADD . /src
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get -y install \
-    build-essential cmake \
+    build-essential cmake git \
     libncurses-dev libpcap-dev \
     libgsl-dev libmosquitto-dev libssl-dev
 RUN cd /src && \
@@ -10,8 +10,15 @@ RUN cd /src && \
     cmake . -DUSE_PCAP=1 -DUSE_GSL=1 -DUSE_MQTT=1 -DUSE_SSL=1 && \
     make
 RUN mv /src/sipp /bin/sipp
+RUN mv /src/sipfront-run.sh /bin/sipfront-run
 
 FROM debian:stable AS run-stage
+ADD ./sipfront-scenarios /scenarios
 RUN apt-get update && apt-get -y install \
-    libncurses6 libpcap0.8 libgsl23 libmosquitto1 libssl1.1
+    libncurses6 libpcap0.8 libgsl23 libmosquitto1 libssl1.1 \
+    curl
 COPY --from=build-stage /bin/sipp /bin/sipp
+COPY --from=build-stage /bin/sipfront-run /bin/sipfront-run
+RUN mkdir /etc/sipfront-scenarios && \
+    cp /scenarios/*.xml /etc/sipfront-scenarios
+RUN mkdir /etc/sipfront-credentials
