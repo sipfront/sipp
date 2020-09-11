@@ -70,7 +70,7 @@ https://www.eclipse.org/paho/clients/js/utility/
 ```
 ./agranig-build-local.sh
 
-docker run -it -p 5060/udp -p 5060-5061/tcp -e SFC_CREDENTIALS_API='https://api.sipfront.com' -e SFC_UUID='ecabb78c-5900-4c38-a63b-4e54ecadf642' -e SFC_TARGET='18.185.42.196' -e SFC_SCENARIO='uac-register.xml' -e SFC_CREDENTIALS_CALLER=1 -e SFC_CREDENTIALS_CALLER_SEQ='SEQUENTIAL' -e SFC_MQTT_HOST='dev.sipfront.com' -e SFC_MQTT_USER='sipp' -e SFC_MQTT_PASS='sipfront!' sipfront-sipp:latest /bin/sipfront-run
+docker run -it -p 5060/udp -p 5060-5061/tcp -e SFC_CREDENTIALS_API='https://api.sipfront.com' -e SFC_SESSION_UUID='ecabb78c-5900-4c38-a63b-4e54ecadf642' -e SFC_TARGET='18.185.42.196' -e SFC_SCENARIO='uac-register.xml' -e SFC_CREDENTIALS_CALLER=1 -e SFC_CREDENTIALS_CALLER_SEQ='SEQUENTIAL' -e SFC_MQTT_HOST='dev.sipfront.com' -e SFC_MQTT_USER='sipp' -e SFC_MQTT_PASS='sipfront!' sipfront-sipp:latest /bin/sipfront-run
 ```
 
 ### Building and pushing remotely

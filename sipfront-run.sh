@@ -107,3 +107,4 @@ sipp \
     -r 1 \
     -sf $SCENARIO $CREDENTIAL_PARAMS \
     $TARGET
+
