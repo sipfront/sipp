@@ -591,6 +591,9 @@ void setup_mqtt_socket()
     mosquitto_message_callback_set(mqtt_handler, mqtt_cb_msg);
     mosquitto_disconnect_callback_set(mqtt_handler, mqtt_cb_disconnect);
 
+    if (mqtt_ca_file) {
+        mosquitto_tls_set(mqtt_handler, mqtt_ca_file, NULL, NULL, NULL, NULL);
+    }
     ret = mosquitto_connect(mqtt_handler, mqtt_host, mqtt_port, keepalive_seconds);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERROR_NO("Could not connect to MQTT broker '%s:%d': %s\n",

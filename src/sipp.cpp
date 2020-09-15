@@ -403,6 +403,7 @@ struct sipp_option options_table[] = {
     {"mqtt_port", "Set the port number of the MQTT broker. Default is 1883.", SIPP_OPTION_INT, &mqtt_port, 1},
     {"mqtt_user", "Set the username to authenticate at the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_user, 1},
     {"mqtt_pass", "Set the password to authenticate at the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_pass, 1},
+    {"mqtt_ca_file", "Set the path to the CA file when connecting via TLS to the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_ca_file, 1},
 #else
     {"mqtt_stats", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_stats_topic", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
@@ -413,6 +414,7 @@ struct sipp_option options_table[] = {
     {"mqtt_port", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_user", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_pass", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_ca_file", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
 #endif
 
 };
