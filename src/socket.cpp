@@ -3169,12 +3169,27 @@ void SIPpSocket::pollset_process(int wait)
         }
         pollfiles[poll_idx].revents = 0;
 #endif
+
+#ifdef USE_MQTT
+        if (sock == mqtt_socket && mosquitto_want_write(mqtt_handler)) {
+#ifdef HAVE_EPOLL
+            epollfiles[poll_idx].events |= EPOLLOUT;
+            epoll_ctl(epollfd, EPOLL_CTL_MOD, sock->ss_fd, &epollfiles[poll_idx]);
+#else
+            pollfiles[poll_idx].events |= POLLOUT;
+#endif
+        }
+#endif
+
+
     }
+    // agranig: end of for-loop iterating over pollfds
 
 #ifndef HAVE_EPOLL
     if (read_index >= pollnfds) {
         read_index = 0;
     }
+
 
     /* We need to process any new messages that we read. */
     while (pending_messages && (loops > 0)) {
