@@ -122,12 +122,13 @@ fi
 
 # -nd -default_behaviors: no defaults, but abort on unexpected message
 # -aa: auto-answer 200 for INFO, NOTIFY, OPTIONS, UPDATE \
+# -l: max concurrent calls
 
 BEHAVIOR="-nd"
 
 echo "Starting sipp"
 sipp \
-    $BEHAVIOR \
+    $BEHAVIOR -l 1000000 \
     -aa \
     -cid_str 'sipfront-%u-%p@%s' \
     -base_cseq 1 \
