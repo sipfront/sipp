@@ -21,7 +21,7 @@ INSTANCE_UUID=$(uuidgen);
 # from debian package "ca-certificates"
 AWS_CA_FILE="/usr/share/ca-certificates/mozilla/Amazon_Root_CA_1.crt"
 
-if ![ -e "$AWS_CA_FILE" ]; then
+if ! [ -e "$AWS_CA_FILE" ]; then
     echo "Missing AWS CA file '$AWS_CA_FILE', aborting"
     exit 1
 fi
