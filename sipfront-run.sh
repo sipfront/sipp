@@ -123,9 +123,11 @@ fi
 # -nd -default_behaviors: no defaults, but abort on unexpected message
 # -aa: auto-answer 200 for INFO, NOTIFY, OPTIONS, UPDATE \
 
+BEHAVIOR="-nd"
+
 echo "Starting sipp"
 sipp \
-    -nd -default_behaviors abortunexp \
+    $BEHAVIOR \
     -aa \
     -cid_str 'sipfront-%u-%p@%s' \
     -base_cseq 1 \
