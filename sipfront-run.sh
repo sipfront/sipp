@@ -81,6 +81,11 @@ if [ -z "$SFC_SCENARIO" ]; then
 fi
 SCENARIO="/etc/sipfront-scenarios/$SFC_SCENARIO"
 
+CALL_RATE=0
+if ! [ -z "$SFC_CALL_RATE" ]; then
+    CALL_RATE="$SFC_CALL_RATE"
+fi
+
 CREDENTIALS_CALLER="$SFC_CREDENTIALS_CALLER"
 CREDENTIALS_CALLER_SEQ="$SFC_CREDENTIALS_CALLER_SEQ"
 
@@ -140,7 +145,7 @@ sipp \
     -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/$SESSION_UUID" \
     $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
     -trace_err \
-    -r 1 \
+    -r "$CALL_RATE" \
     -sf $SCENARIO $CREDENTIAL_PARAMS \
     $TARGET
 
