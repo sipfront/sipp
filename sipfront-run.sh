@@ -128,6 +128,7 @@ fi
 # -nd -default_behaviors: no defaults, but abort on unexpected message
 # -aa: auto-answer 200 for INFO, NOTIFY, OPTIONS, UPDATE \
 # -l: max concurrent calls
+# -rtt_freq: send rtt every $x calls, so set to call rate to get per sec
 
 BEHAVIOR="-nd"
 
@@ -138,7 +139,7 @@ sipp \
     -cid_str 'sipfront-%u-%p@%s' \
     -base_cseq 1 \
     -trace_stat -fd 1 \
-    -trace_rtt -rtt_freq 1 \
+    -trace_rtt -rtt_freq "$CALL_RATE" \
     -mqtt_stats 1 \
     -mqtt_stats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/call/${INSTANCE_UUID}" \
     -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${INSTANCE_UUID}" \
