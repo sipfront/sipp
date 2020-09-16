@@ -34,6 +34,12 @@ if [ -z "$SFC_CREDENTIALS_API" ]; then
 fi
 CREDENTIALS_API="$SFC_CREDENTIALS_API"
 
+if [ -z "$SFC_CREDENTIALS_API_TOKEN" ]; then
+    echo "Missing env SFC_CREDENTIALS_API_TOKEN, aborting"
+    exit 1
+fi
+CREDENTIALS_API_TOKEN="$SFC_CREDENTIALS_API_TOKEN"
+
 if [ -z "$SFC_SESSION_UUID" ]; then
     echo "Missing env SFC_SESSION_UUID, aborting"
     exit 1
@@ -103,7 +109,7 @@ if [ "$CREDENTIALS_CALLER" = "1" ]; then
 
     URL="${CREDENTIALS_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
     echo "Fetching caller credentials from '$URL' to '$CREDENTIALS_CALLER_FILE'"
-    curl -H 'Accept: text/csv' "$URL" -o "$CREDENTIALS_CALLER_FILE"
+    curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $CREDENTIALS_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
 fi
 
 if [ "$CREDENTIALS_CALLEE" = "1" ]; then
@@ -114,7 +120,7 @@ if [ "$CREDENTIALS_CALLEE" = "1" ]; then
     URL="${CREDENTIALS_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
 
     echo "Fetching callee credentials from '$URL' to '$CREDENTIALS_CALLEE_FILE'"
-    curl -H 'Accept: text/csv' "$URL" -o "$CREDENTIALS_CALLEE_FILE"
+    curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $CREDENTIALS_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
 fi
 
 CREDENTIAL_PARAMS=""
