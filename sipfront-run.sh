@@ -28,17 +28,17 @@ fi
 MQTT_CA_FILE="-mqtt_ca_file $AWS_CA_FILE"
 
 
-if [ -z "$SFC_CREDENTIALS_API" ]; then
-    echo "Missing env SFC_CREDENTIALS_API, aborting"
+if [ -z "$SFC_SIPFRONT_API" ]; then
+    echo "Missing env SFC_SIPFRONT_API, aborting"
     exit 1
 fi
-CREDENTIALS_API="$SFC_CREDENTIALS_API"
+SIPFRONT_API="$SFC_SIPFRONT_API"
 
-if [ -z "$SFC_CREDENTIALS_API_TOKEN" ]; then
-    echo "Missing env SFC_CREDENTIALS_API_TOKEN, aborting"
+if [ -z "$SFC_SIPFRONT_API_TOKEN" ]; then
+    echo "Missing env SFC_SIPFRONT_API_TOKEN, aborting"
     exit 1
 fi
-CREDENTIALS_API_TOKEN="$SFC_CREDENTIALS_API_TOKEN"
+SIPFRONT_API_TOKEN="$SFC_SIPFRONT_API_TOKEN"
 
 if [ -z "$SFC_SESSION_UUID" ]; then
     echo "Missing env SFC_SESSION_UUID, aborting"
@@ -85,7 +85,8 @@ if [ -z "$SFC_SCENARIO" ]; then
     echo "Missing env SFC_SCENARIO, aborting"
     exit 1
 fi
-SCENARIO="/etc/sipfront-scenarios/$SFC_SCENARIO"
+SCENARIO="$SFC_SCENARIO"
+SCENARIO_FILE="/etc/sipfront-scenarios/${SCENARIO}.xml"
 
 CALL_RATE=0
 if ! [ -z "$SFC_CALL_RATE" ]; then
@@ -101,15 +102,19 @@ CREDENTIALS_CALLEE_SEQ="$SFC_CREDENTIALS_CALLEE_SEQ"
 CREDENTIALS_CALLER_FILE="/etc/sipfront-credentials/caller.csv"
 CREDENTIALS_CALLEE_FILE="/etc/sipfront-credentials/callee.csv"
 
+URL="${SIPFRONT_API}/scenarios/?name=${SCENARIO}"
+echo "Fetching scenario '$URL' to '$SCENARIO_FILE'"
+curl -f -H 'Accept: application/xml' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$SCENARIO_FILE"
+
 if [ "$CREDENTIALS_CALLER" = "1" ]; then
     PARAMS=""
     if [ -n "$CREDENTIALS_CALLER_SEQ" ]; then
         PARAMS="force_seq=$CREDENTIALS_CALLER_SEQ"
     fi
 
-    URL="${CREDENTIALS_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
+    URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
     echo "Fetching caller credentials from '$URL' to '$CREDENTIALS_CALLER_FILE'"
-    curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $CREDENTIALS_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
+    curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
 fi
 
 if [ "$CREDENTIALS_CALLEE" = "1" ]; then
@@ -117,10 +122,10 @@ if [ "$CREDENTIALS_CALLEE" = "1" ]; then
     if [ -n "$CREDENTIALS_CALLEE_SEQ" ]; then
         PARAMS="force_seq=$CREDENTIALS_CALLEE_SEQ"
     fi
-    URL="${CREDENTIALS_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
+    URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
 
     echo "Fetching callee credentials from '$URL' to '$CREDENTIALS_CALLEE_FILE'"
-    curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $CREDENTIALS_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
+    curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
 fi
 
 CREDENTIAL_PARAMS=""
@@ -153,6 +158,6 @@ sipp \
     $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
     -trace_err \
     -r "$CALL_RATE" \
-    -sf $SCENARIO $CREDENTIAL_PARAMS \
+    -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
     $TARGET
 
