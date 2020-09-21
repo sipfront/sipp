@@ -46,11 +46,23 @@ if [ -z "$SFC_SESSION_UUID" ]; then
 fi
 SESSION_UUID="$SFC_SESSION_UUID"
 
-if [ -z "$SFC_TARGET" ]; then
-    echo "Missing env SFC_TARGET, aborting"
+if [ -z "$SFC_TARGET_HOST" ]; then
+    echo "Missing env SFC_TARGET_HOST, aborting"
     exit 1
 fi
-TARGET="$SFC_TARGET"
+TARGET_HOST="$SFC_TARGET_HOST"
+
+if [ -z "$SFC_TARGET_PORT" ]; then
+    echo "Missing env SFC_TARGET_PORT, aborting"
+    exit 1
+fi
+TARGET_PORT="$SFC_TARGET_PORT"
+
+if [ -z "$SFC_TARGET_PROTO" ]; then
+    echo "Missing env SFC_TARGET_PROTO, aborting"
+    exit 1
+fi
+TARGET_PROTO="$SFC_TARGET_PROTO"
 
 if [ -z "$SM_MQTT_HOST" ]; then
     echo "Missing env SM_MQTT_HOST, aborting"
@@ -91,6 +103,26 @@ SCENARIO_FILE="/etc/sipfront-scenarios/${SCENARIO}.xml"
 CALL_RATE=0
 if ! [ -z "$SFC_CALL_RATE" ]; then
     CALL_RATE="$SFC_CALL_RATE"
+fi
+
+CONCURRENT_CALLS=1000000
+if ! [ -z "$SFC_CONCURRENT_CALLS" ]; then
+    CONCURRENT_CALLS="$SFC_CONCURRENT_CALLS"
+fi
+
+TEST_DURATION=43200
+if ! [ -z "$SFC_TEST_DURATION" ]; then
+    TEST_DURATION="$SFC_TEST_DURATION"
+fi
+
+CALL_DURATION=""
+if ! [ -z "$SFC_CALL_DURATION" ]; then
+    CALL_DURATION="-d ${SFC_CALL_DURATION}000"
+fi
+
+REGISTRATION_EXPIRE=0
+if ! [ -z "$SFC_REGISTRATION_EXPIRE" ]; then
+    REGISTRATION_EXPIRE="$SFC_REGISTRATION_EXPIRE"
 fi
 
 CREDENTIALS_CALLER="$SFC_CREDENTIALS_CALLER"
@@ -136,17 +168,57 @@ if [ -e "$CREDENTIALS_CALLEE_FILE" ]; then
     CREDENTIAL_PARAMS="$CREDENTIAL_PARAMS -inf $CREDENTIALS_CALLEE_FILE"
 fi
 
+
+OUTBOUND_PROXY=""
+if [ -n "$SFC_OUTBOUND_HOST" ]; then
+    if [ -z "$SFC_OUTBOUND_PORT" ]; then
+        OUTBOUND_PORT="5060"
+    else
+        OUTBOUND_PORT="$SFC_OUTBOUND_PORT"
+    fi
+    OUTBOUND_PROXY="-rsa ${SFC_OUTBOUND_HOST}:${$SFC_OUTBOUND_PORT}"
+fi
+
+TRANSPORT_PROTO="$TARGET_PROTO"
+if [ -n "$OUTBOUND_PROXY" && -n "$SFC_OUTBOUND_PROTO" ]; then
+    TRANSPORT_PROTO="$SFC_OUTBOUND_PROTO"
+fi
+
+TRANSPORT_MODE=""
+case "$TRANSPORT_PROTO" in
+    "udp")
+        TRANSPORT_MODE="-t u1"
+        ;;
+    "tcp")
+        TRANSPORT_MODE="-t tn -max_socket 50000"
+        ;;
+    "tls")
+        ;;
+    *)
+        ;;
+esac
+
+
+
 # -nd -default_behaviors: no defaults, but abort on unexpected message
 # -aa: auto-answer 200 for INFO, NOTIFY, OPTIONS, UPDATE \
 # -l: max concurrent calls
 # -rtt_freq: send rtt every $x calls, so set to call rate to get per sec
 
+# -lost: number of packets to lose per default
+
+# -key: set "keyword" to value
+# -m: exit after -m calls are processed
+# -users: start with -users concurrent calls and keep it constant
+
+# -t: transport mode
+
 BEHAVIOR="-nd"
 
 echo "Starting sipp"
-sipp \
-    $BEHAVIOR -l 1000000 \
-    -aa \
+timeout "${TEST_DURATION}s" sipp \
+    $BEHAVIOR -l "$CONCURRENT_CALLS" \
+    -aa $CALL_DURATION $TRANSPORT_MODE \
     -cid_str 'sipfront-%u-%p@%s' \
     -base_cseq 1 \
     -trace_stat -fd 1 \
@@ -159,5 +231,5 @@ sipp \
     -trace_err \
     -r "$CALL_RATE" \
     -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
-    $TARGET
+    "$TARGET_HOST:$TARGET_PORT"
 

@@ -13,12 +13,9 @@ RUN mv /src/sipp /bin/sipp
 RUN mv /src/sipfront-run.sh /bin/sipfront-run
 
 FROM debian:stable AS run-stage
-ADD ./sipfront-scenarios /scenarios
 RUN apt-get update && apt-get -y install \
     libncurses6 libpcap0.8 libgsl23 libmosquitto1 libssl1.1 \
     uuid-runtime curl awscli jq
 COPY --from=build-stage /bin/sipp /bin/sipp
 COPY --from=build-stage /bin/sipfront-run /bin/sipfront-run
-RUN mkdir /etc/sipfront-scenarios && \
-    cp /scenarios/*.xml /etc/sipfront-scenarios
-RUN mkdir /etc/sipfront-credentials
+RUN mkdir /etc/sipfront-scenarios /etc/sipfront-credentials
