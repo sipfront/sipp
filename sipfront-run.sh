@@ -126,10 +126,7 @@ if ! [ -z "$SFC_REGISTRATION_EXPIRE" ]; then
 fi
 
 CREDENTIALS_CALLER="$SFC_CREDENTIALS_CALLER"
-CREDENTIALS_CALLER_SEQ="$SFC_CREDENTIALS_CALLER_SEQ"
-
 CREDENTIALS_CALLEE="$SFC_CREDENTIALS_CALLEE"
-CREDENTIALS_CALLEE_SEQ="$SFC_CREDENTIALS_CALLEE_SEQ"
 
 CREDENTIALS_CALLER_FILE="/etc/sipfront-credentials/caller.csv"
 CREDENTIALS_CALLEE_FILE="/etc/sipfront-credentials/callee.csv"
@@ -139,22 +136,13 @@ echo "Fetching scenario '$URL' to '$SCENARIO_FILE'"
 curl -f -H 'Accept: application/xml' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$SCENARIO_FILE"
 
 if [ "$CREDENTIALS_CALLER" = "1" ]; then
-    PARAMS=""
-    if [ -n "$CREDENTIALS_CALLER_SEQ" ]; then
-        PARAMS="force_seq=$CREDENTIALS_CALLER_SEQ"
-    fi
-
-    URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
+    URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials/caller"
     echo "Fetching caller credentials from '$URL' to '$CREDENTIALS_CALLER_FILE'"
     curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
 fi
 
 if [ "$CREDENTIALS_CALLEE" = "1" ]; then
-    PARAMS=""
-    if [ -n "$CREDENTIALS_CALLEE_SEQ" ]; then
-        PARAMS="force_seq=$CREDENTIALS_CALLEE_SEQ"
-    fi
-    URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials?${PARAMS}"
+    URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials/callee"
 
     echo "Fetching callee credentials from '$URL' to '$CREDENTIALS_CALLEE_FILE'"
     curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
