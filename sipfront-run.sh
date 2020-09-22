@@ -207,7 +207,7 @@ echo "Starting sipp"
 timeout "${TEST_DURATION}s" sipp \
     $BEHAVIOR -l "$CONCURRENT_CALLS" \
     -aa $CALL_DURATION $TRANSPORT_MODE \
-    -cid_str 'sipfront-%u-%p@%s' \
+    -cid_str "sipfront-${SESSION_UUID}-%u-%p@%s" \
     -base_cseq 1 \
     -trace_stat -fd 1 \
     -trace_rtt -rtt_freq "$CALL_RATE" \
