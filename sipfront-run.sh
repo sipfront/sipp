@@ -168,7 +168,7 @@ if [ -n "$SFC_OUTBOUND_HOST" ]; then
 fi
 
 TRANSPORT_PROTO="$TARGET_PROTO"
-if [ -n "$OUTBOUND_PROXY" && -n "$SFC_OUTBOUND_PROTO" ]; then
+if [ -n "$OUTBOUND_PROXY" ] && [ -n "$SFC_OUTBOUND_PROTO" ]; then
     TRANSPORT_PROTO="$SFC_OUTBOUND_PROTO"
 fi
 
