@@ -214,6 +214,8 @@ timeout -s SIGUSR1 -k 60 "${TEST_DURATION}s" sipp \
     -mqtt_stats 1 \
     -mqtt_stats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/call/${INSTANCE_UUID}" \
     -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${INSTANCE_UUID}" \
+    -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${INSTANCE_UUID}" \
+    -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${INSTANCE_UUID}" \
     -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/$SESSION_UUID" \
     $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
     -trace_err \

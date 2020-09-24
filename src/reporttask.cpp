@@ -32,6 +32,10 @@
  */
 #include "sipp.hpp"
 
+#ifdef USE_MQTT
+#include "mqtt_logger.hpp"
+#endif
+
 class stattask *stattask::instance = NULL;
 class screentask *screentask::instance = NULL;
 
@@ -100,6 +104,13 @@ void stattask::report()
     if (useErrorCodesf) {
         print_error_codes_file(codesf);
     }
+
+#ifdef USE_MQTT
+    if (mqtt_stats) {
+        print_count_mqtt();
+        print_error_codes_mqtt();
+    }
+#endif
 
     main_scenario->stats->computeStat(CStat::E_RESET_PL_COUNTERS);
     last_dump_time = clock_tick;

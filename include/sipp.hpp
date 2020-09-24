@@ -252,6 +252,8 @@ MAYBE_EXTERN bool               gracefulclose           DEFVAL(true);
 MAYBE_EXTERN bool               mqtt_stats              DEFVAL(false);
 MAYBE_EXTERN const char *       mqtt_stats_topic        DEFVAL("/sipp/stats");
 MAYBE_EXTERN const char *       mqtt_rttstats_topic     DEFVAL("/sipp/rttstats");
+MAYBE_EXTERN const char *       mqtt_countstats_topic       DEFVAL("/sipp/countstats");
+MAYBE_EXTERN const char *       mqtt_codestats_topic        DEFVAL("/sipp/codestats");
 MAYBE_EXTERN bool               mqtt_ctrl               DEFVAL(false);
 MAYBE_EXTERN const char *       mqtt_ctrl_topic         DEFVAL("/sipp/ctrl");
 MAYBE_EXTERN const char *       mqtt_host               DEFVAL("localhost");
