@@ -51,86 +51,81 @@ void print_count_mqtt()
 	jsonData
 		<< "{"
 		<< JQC(CurrentTime, CStat::formatTime(&currentTime, true))
-		<< JQC(ElapsedTime, CStat::msToHHMMSSus(globalElapsedTime));
+		<< JQC(ElapsedTime, CStat::msToHHMMSSus(globalElapsedTime))
+		<< "\"Counts\":[";
 
+    bool popComma = main_scenario->messages.size() ? true : false;
     for (unsigned int index = 0; index < main_scenario->messages.size(); index++) {
         message* curmsg = main_scenario->messages[index];
         if (curmsg->hide) {
             continue;
         }
 
+		jsonData << "{";
         if (SendingMessage* src = curmsg->send_scheme) {
-            std::stringstream ss;
-            ss << index << "_";
             if (src->isResponse()) {
-                ss << src->getCode();
+                jsonData 
+                    << JQC(Type, "sendres")
+                    << JQC(Name, src->getCode());
             } else {
-                ss << src->getMethod();
+                jsonData 
+                    << JQC(Type, "sendreq")
+                    << JQC(Name, src->getMethod());
             }
-            ss << "_";
-            std::string prefix = ss.str();
-
-            jsonData 
-                << "\"" << prefix << "Sent\":" << curmsg->nb_sent << ","
-                << "\"" << prefix << "Retrans\":" << curmsg->nb_sent_retrans << ",";
+            jsonData
+                << JQC(Sent, curmsg->nb_sent)
+                << JQV(Retrans, curmsg->nb_sent_retrans);
             if (curmsg->retrans_delay) {
-                jsonData
-                    << "\"" << prefix << "Timeout\":" << curmsg->nb_timeout << ",";
+                jsonData << "," << JQV(Timeout, curmsg->nb_timeout);
             }
             if (lose_packets) {
-                jsonData
-                    << "\"" << prefix << "Lost\":" << curmsg->nb_lost<< ",";
+                jsonData << "," << JQV(Lost, curmsg->nb_lost);
             }
         } else if (curmsg->recv_response || curmsg->recv_request) {
-            std::stringstream ss;
-            ss << index << "_";
             if (curmsg->recv_response) {
-                ss << curmsg->recv_response;
+                jsonData 
+                    << JQC(Type, "recvres")
+                    << JQC(Name, curmsg->recv_response);
             } else {
-                ss << curmsg->recv_request;
+                jsonData 
+                    << JQC(Type, "recvreq")
+                    << JQC(Name, curmsg->recv_request);
             }
-            ss << "_";
-            std::string prefix = ss.str();
-
-            jsonData 
-                << "\"" << prefix << "Recv\":" << curmsg->nb_recv << ","
-                << "\"" << prefix << "Retrans\":" << curmsg->nb_recv_retrans << ","
-                << "\"" << prefix << "Timeout\":" << curmsg->nb_timeout << ","
-                << "\"" << prefix << "Unexp\":" << curmsg->nb_unexp << ",";
-                if (lose_packets) {
-                    jsonData << "\"" << prefix << "Lost\":" << curmsg->nb_lost << ",";
-                }
+            jsonData
+                << JQC(Recv, curmsg->nb_recv)
+                << JQC(Retrans, curmsg->nb_recv_retrans)
+                << JQC(Timeout, curmsg->nb_timeout)
+                << JQV(Unexp, curmsg->nb_unexp);
+            if (lose_packets) {
+                jsonData << "," << JQV(Lost, curmsg->nb_lost);
+            }
         } else if (curmsg->pause_distribution || curmsg->pause_variable) {
-            std::stringstream ss;
-            ss << index << "_Pause_";
-            std::string prefix = ss.str();
-
             jsonData 
-                << "\"" << prefix << "Sessions\":" << curmsg->sessions << ","
-                << "\"" << prefix << "Unexp\":" << curmsg->nb_unexp << ",";
+                << JQC(Type, "pause")
+                << JQC(Sessions, curmsg->sessions)
+                << JQV(Unexp, curmsg->nb_unexp);
         } else if (curmsg->M_type == MSG_TYPE_NOP) {
             /* No output. */
         } else if (curmsg->M_type == MSG_TYPE_RECVCMD) {
-            std::stringstream ss;
-            ss << index << "_RecvCmd";
-            std::string prefix = ss.str();
-
             jsonData 
-                << "\"" << prefix << "\":" << curmsg->M_nbCmdRecv << ","
-                << "\"" << prefix << "_Timeout\":" << curmsg->nb_timeout << ",";
+                << JQC(Type, "recvcmd")
+                << JQC(RecvCmd, curmsg->M_nbCmdRecv)
+                << JQV(Timeout, curmsg->nb_timeout);
         } else if (curmsg->M_type == MSG_TYPE_SENDCMD) {
-            std::stringstream ss;
-            ss << index << "_SendCmd";
-            std::string prefix = ss.str();
-
             jsonData 
-                << "\"" << prefix << "\":" << curmsg->M_nbCmdSent << ",";
+                << JQC(Type, "sendcmd")
+                << JQV(SendCmd, curmsg->M_nbCmdSent);
+        } else {
+            jsonData 
+                << JQV(Type, "invalid");
         }
+		jsonData << "},";
     }
 
     std::string jsonDataStr = jsonData.str();
-    jsonDataStr.pop_back(); // remove trailing comma
-    jsonDataStr += "}\n";
+    if (popComma)
+        jsonDataStr.pop_back();
+    jsonDataStr += "]}\n";
 
     int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_countstats_topic,
             jsonDataStr.length(), jsonDataStr.c_str(),
@@ -172,7 +167,7 @@ void print_error_codes_mqtt()
     // Print comma-separated list of all error codes seen since the last time
     // this function was called
 
-    bool popComma = main_scenario->stats->error_codes.size() > 0 ? true : false;
+    bool popComma = main_scenario->stats->error_codes.size() ? true : false;
     for (; main_scenario->stats->error_codes.size() != 0;) {
         jsonData
             << main_scenario->stats
