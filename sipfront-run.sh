@@ -204,6 +204,11 @@ esac
 BEHAVIOR="-nd"
 
 echo "Starting sipp"
+ulimit -c unlimited
+
+# unarm, so we can dump errors below
+set +e
+
 timeout -s SIGUSR1 -k 60 "${TEST_DURATION}s" sipp \
     $BEHAVIOR -l "$CONCURRENT_CALLS" \
     -aa $CALL_DURATION $TRANSPORT_MODE \
@@ -223,3 +228,10 @@ timeout -s SIGUSR1 -k 60 "${TEST_DURATION}s" sipp \
     -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
     "$TARGET_HOST:$TARGET_PORT"
 
+cat /*errors.log
+if ls core.* 1>/dev/null 2>/dev/null; then
+    CF="/gdb.txt"
+    echo "bt" > $CF
+    echo "quit" >> $CF
+    gdb -x $CF /bin/sipp /core.*
+fi

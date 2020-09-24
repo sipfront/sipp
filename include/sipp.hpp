@@ -479,7 +479,7 @@ MAYBE_EXTERN short         use_remote_sending_addr      DEFVAL(0);
 MAYBE_EXTERN struct sockaddr_storage remote_sending_sockaddr;
 
 #ifdef USE_MQTT
-MAYBE_EXTERN struct mosquitto *mqtt_handler;
+MAYBE_EXTERN struct mosquitto *mqtt_handler DEFVAL(NULL);
 #endif
 
 enum E_Alter_YesNo {

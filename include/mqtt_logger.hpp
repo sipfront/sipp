@@ -19,6 +19,9 @@
 #ifndef __SIPP_MQTT_LOGGER_H__
 #define __SIPP_MQTT_LOGGER_H__
 
+#include <time.h>
+#include "sipp.hpp"
+
 void print_count_mqtt();
 void print_error_codes_mqtt();
 

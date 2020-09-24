@@ -39,10 +39,8 @@ void print_count_mqtt()
     if (!mqtt_ready)
         return; 
 
-    if (mqtt_handler == NULL) {
-        cerr << "Unable to use uninitialized MQTT handler!" << endl;
+    if (mqtt_handler == NULL)
         return;
-    }
 
 	struct timeval currentTime, startTime;
 	GET_TIME(&currentTime);
@@ -52,7 +50,7 @@ void print_count_mqtt()
 
 	jsonData
 		<< "{"
-		<< JQC(CurrentTime, CStat::formatTime(&currentTime))
+		<< JQC(CurrentTime, CStat::formatTime(&currentTime, true))
 		<< JQC(ElapsedTime, CStat::msToHHMMSSus(globalElapsedTime));
 
     for (unsigned int index = 0; index < main_scenario->messages.size(); index++) {
@@ -63,9 +61,14 @@ void print_count_mqtt()
 
         if (SendingMessage* src = curmsg->send_scheme) {
             std::stringstream ss;
-            ss << index << "_" << (src->isResponse() ? src->getCode() : src->getMethod()) << "_";
-            std::string prefix;
-            ss >> prefix;
+            ss << index << "_";
+            if (src->isResponse()) {
+                ss << src->getCode();
+            } else {
+                ss << src->getMethod();
+            }
+            ss << "_";
+            std::string prefix = ss.str();
 
             jsonData 
                 << "\"" << prefix << "Sent\":" << curmsg->nb_sent << ","
@@ -75,15 +78,19 @@ void print_count_mqtt()
                     << "\"" << prefix << "Timeout\":" << curmsg->nb_timeout << ",";
             }
             if (lose_packets) {
-                fprintf(f, "%sLost%s", temp_str, stat_delimiter);
                 jsonData
                     << "\"" << prefix << "Lost\":" << curmsg->nb_lost<< ",";
             }
         } else if (curmsg->recv_response || curmsg->recv_request) {
             std::stringstream ss;
-            ss << index << "_" << (curmsg->recv_response ? curmsg->recv_response : curmsg->recv_request) << "_";
-            std::string prefix;
-            ss >> prefix;
+            ss << index << "_";
+            if (curmsg->recv_response) {
+                ss << curmsg->recv_response;
+            } else {
+                ss << curmsg->recv_request;
+            }
+            ss << "_";
+            std::string prefix = ss.str();
 
             jsonData 
                 << "\"" << prefix << "Recv\":" << curmsg->nb_recv << ","
@@ -96,8 +103,7 @@ void print_count_mqtt()
         } else if (curmsg->pause_distribution || curmsg->pause_variable) {
             std::stringstream ss;
             ss << index << "_Pause_";
-            std::string prefix;
-            ss >> prefix;
+            std::string prefix = ss.str();
 
             jsonData 
                 << "\"" << prefix << "Sessions\":" << curmsg->sessions << ","
@@ -107,8 +113,7 @@ void print_count_mqtt()
         } else if (curmsg->M_type == MSG_TYPE_RECVCMD) {
             std::stringstream ss;
             ss << index << "_RecvCmd";
-            std::string prefix;
-            ss >> prefix;
+            std::string prefix = ss.str();
 
             jsonData 
                 << "\"" << prefix << "\":" << curmsg->M_nbCmdRecv << ","
@@ -116,13 +121,10 @@ void print_count_mqtt()
         } else if (curmsg->M_type == MSG_TYPE_SENDCMD) {
             std::stringstream ss;
             ss << index << "_SendCmd";
-            std::string prefix;
-            ss >> prefix;
+            std::string prefix = ss.str();
 
             jsonData 
                 << "\"" << prefix << "\":" << curmsg->M_nbCmdSent << ",";
-        } else {
-            ERROR("Unknown count file message type:");
         }
     }
 
@@ -146,6 +148,14 @@ void print_error_codes_mqtt()
         return;
     }
 
+    if (!mqtt_ready) {
+        return; 
+    }
+
+    if (mqtt_handler == NULL) {
+        return;
+    }
+
     // Print time and elapsed time to file
     struct timeval currentTime, startTime;
     GET_TIME(&currentTime);
@@ -155,12 +165,14 @@ void print_error_codes_mqtt()
 
 	jsonData
 		<< "{"
-		<< JQC(CurrentTime, CStat::formatTime(&currentTime))
+		<< JQC(CurrentTime, CStat::formatTime(&currentTime, true))
 		<< JQC(ElapsedTime, CStat::msToHHMMSSus(globalElapsedTime))
         << "\"ErrorCodes\":[";
 
     // Print comma-separated list of all error codes seen since the last time
     // this function was called
+
+    bool popComma = main_scenario->stats->error_codes.size() > 0 ? true : false;
     for (; main_scenario->stats->error_codes.size() != 0;) {
         jsonData
             << main_scenario->stats
@@ -170,7 +182,8 @@ void print_error_codes_mqtt()
     }
 
     std::string jsonDataStr = jsonData.str();
-    jsonDataStr.pop_back();
+    if (popComma)
+        jsonDataStr.pop_back();
     jsonDataStr += "]}\n";
 
     int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_codestats_topic,
