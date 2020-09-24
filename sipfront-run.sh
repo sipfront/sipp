@@ -204,7 +204,7 @@ esac
 BEHAVIOR="-nd"
 
 echo "Starting sipp"
-timeout "${TEST_DURATION}s" sipp \
+timeout -s SIGUSR1 -k 60 "${TEST_DURATION}s" sipp \
     $BEHAVIOR -l "$CONCURRENT_CALLS" \
     -aa $CALL_DURATION $TRANSPORT_MODE \
     -cid_str "sipfront-${SESSION_UUID}-%u-%p@%s" \
