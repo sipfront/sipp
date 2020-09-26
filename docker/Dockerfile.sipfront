@@ -15,7 +15,7 @@ RUN mv /src/sipfront-run.sh /bin/sipfront-run
 FROM debian:stable AS run-stage
 RUN apt-get update && apt-get -y install \
     libncurses6 libpcap0.8 libgsl23 libmosquitto1 libssl1.1 \
-    uuid-runtime curl awscli jq gdb
+    uuid-runtime curl awscli jq gdb iptables mosquitto-clients
 COPY --from=build-stage /bin/sipp /bin/sipp
 COPY --from=build-stage /bin/sipfront-run /bin/sipfront-run
 RUN mkdir /etc/sipfront-scenarios /etc/sipfront-credentials

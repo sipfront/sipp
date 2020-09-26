@@ -157,6 +157,7 @@ if [ -e "$CREDENTIALS_CALLEE_FILE" ]; then
 fi
 
 
+IPTABLES_OUT_DST="--dport $TARGET_PORT"
 OUTBOUND_PROXY=""
 if [ -n "$SFC_OUTBOUND_HOST" ]; then
     if [ -z "$SFC_OUTBOUND_PORT" ]; then
@@ -165,14 +166,18 @@ if [ -n "$SFC_OUTBOUND_HOST" ]; then
         OUTBOUND_PORT="$SFC_OUTBOUND_PORT"
     fi
     OUTBOUND_PROXY="-rsa ${SFC_OUTBOUND_HOST}:${$SFC_OUTBOUND_PORT}"
+    IPTABLES_OUT_DST="--dport $OUTBOUND_PORT"
 fi
 
 TRANSPORT_PROTO="$TARGET_PROTO"
 if [ -n "$OUTBOUND_PROXY" ] && [ -n "$SFC_OUTBOUND_PROTO" ]; then
     TRANSPORT_PROTO="$SFC_OUTBOUND_PROTO"
 fi
+IPTABLES_OUT_DST="-p $TRANSPORT_PROTO $IPTABLES_OUT_DST"
 
+LOCAL_PORT="5060"
 TRANSPORT_MODE=""
+# TODO: port range for tcp, especially for iptables stats?
 case "$TRANSPORT_PROTO" in
     "udp")
         TRANSPORT_MODE="-t u1"
@@ -186,7 +191,23 @@ case "$TRANSPORT_PROTO" in
         ;;
 esac
 
-
+# setting iptables rules for traffic stats
+iptables -A OUTPUT $IPTABLES_OUT_DST -m comment --comment "sf-sip-out"
+iptables -A INPUT -p udp --dport 5060 -m comment --comment "sf-sip-in"
+iptables -A INPUT -p tcp --dport 5060:5061 -m comment --comment "sf-sip-in"
+{
+    while true; do
+        msg=$(iptables -n -L -v -x | grep 'sf-sip');
+        mosquitto_pub \
+            -t "$SM_MQTT_TOPICBASE/${SESSION_UUID}/netstat/${INSTANCE_UUID}" \
+            -h $SM_MQTT_HOST -p $SM_MQTT_PORT \
+            -m "$msg" \
+            --cafile /usr/share/ca-certificates/mozilla/Amazon_Root_CA_1.crt \
+            -u $SM_MQTT_USER -P $SM_MQTT_PASS;
+        sleep 1;
+    done; 
+} &
+loop_pid=$!
 
 # -nd -default_behaviors: no defaults, but abort on unexpected message
 # -aa: auto-answer 200 for INFO, NOTIFY, OPTIONS, UPDATE \
@@ -226,6 +247,7 @@ timeout -s SIGUSR1 -k 60 "${TEST_DURATION}s" sipp \
     -trace_err \
     -r "$CALL_RATE" \
     -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
+    -p $LOCAL_PORT \
     "$TARGET_HOST:$TARGET_PORT"
 
 cat /*errors.log
@@ -235,3 +257,5 @@ if ls core.* 1>/dev/null 2>/dev/null; then
     echo "quit" >> $CF
     gdb -x $CF /bin/sipp /core.*
 fi
+
+kill $loop_pid
