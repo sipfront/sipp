@@ -1,8 +1,10 @@
 #!/bin/bash
 
-set -e
-
 PATH="/bin:/usr/bin"
+
+########################################################################
+# fetch credentials from AWS
+########################################################################
 
 secret=$(aws secretsmanager get-secret-value --secret-id "mqtt-sipp-stats-credentials" --region eu-central-1 | jq -r '.SecretString')
 if [ "$secret" = "null" ]; then
@@ -18,6 +20,10 @@ SM_MQTT_TOPICBASE=$(echo $secret | jq -r '.topicbase')
 
 INSTANCE_UUID=$(uuidgen);
 
+########################################################################
+# system specific checks
+########################################################################
+
 # from debian package "ca-certificates"
 AWS_CA_FILE="/usr/share/ca-certificates/mozilla/Amazon_Root_CA_1.crt"
 
@@ -27,42 +33,15 @@ if ! [ -e "$AWS_CA_FILE" ]; then
 fi
 MQTT_CA_FILE="-mqtt_ca_file $AWS_CA_FILE"
 
-
-if [ -z "$SFC_SIPFRONT_API" ]; then
-    echo "Missing env SFC_SIPFRONT_API, aborting"
-    exit 1
-fi
-SIPFRONT_API="$SFC_SIPFRONT_API"
-
-if [ -z "$SFC_SIPFRONT_API_TOKEN" ]; then
-    echo "Missing env SFC_SIPFRONT_API_TOKEN, aborting"
-    exit 1
-fi
-SIPFRONT_API_TOKEN="$SFC_SIPFRONT_API_TOKEN"
+########################################################################
+# mqtt specific checks, so we can publish state
+########################################################################
 
 if [ -z "$SFC_SESSION_UUID" ]; then
     echo "Missing env SFC_SESSION_UUID, aborting"
     exit 1
 fi
 SESSION_UUID="$SFC_SESSION_UUID"
-
-if [ -z "$SFC_TARGET_HOST" ]; then
-    echo "Missing env SFC_TARGET_HOST, aborting"
-    exit 1
-fi
-TARGET_HOST="$SFC_TARGET_HOST"
-
-if [ -z "$SFC_TARGET_PORT" ]; then
-    echo "Missing env SFC_TARGET_PORT, aborting"
-    exit 1
-fi
-TARGET_PORT="$SFC_TARGET_PORT"
-
-if [ -z "$SFC_TARGET_PROTO" ]; then
-    echo "Missing env SFC_TARGET_PROTO, aborting"
-    exit 1
-fi
-TARGET_PROTO="$SFC_TARGET_PROTO"
 
 if [ -z "$SM_MQTT_HOST" ]; then
     echo "Missing env SM_MQTT_HOST, aborting"
@@ -93,8 +72,63 @@ if [ -z "$SM_MQTT_TOPICBASE" ]; then
     exit 1
 fi
 
+function publish_mqtt() {
+    topic="$1"
+    message="$2"
+
+    mosquitto_pub \
+        -t "$SM_MQTT_TOPICBASE/${SESSION_UUID}/$topic/${INSTANCE_UUID}" \
+        -h "$SM_MQTT_HOST" -p "$SM_MQTT_PORT" \
+        -m "$message" \
+        --cafile "$AWS_CA_FILE" \
+        -u "$SM_MQTT_USER" -P "$SM_MQTT_PASS";
+}
+
+publish_mqtt "status" "infra_container_started"
+
+########################################################################
+# scenario specific checks
+########################################################################
+
+if [ -z "$SFC_TARGET_HOST" ]; then
+    echo "Missing env SFC_TARGET_HOST, aborting"
+    publish_mqtt "status" "infra_container_failed_env"
+    exit 1
+fi
+TARGET_HOST="$SFC_TARGET_HOST"
+
+if [ -z "$SFC_TARGET_PORT" ]; then
+    echo "Missing env SFC_TARGET_PORT, aborting"
+    publish_mqtt "status" "infra_container_failed_env"
+    exit 1
+fi
+TARGET_PORT="$SFC_TARGET_PORT"
+
+if [ -z "$SFC_TARGET_PROTO" ]; then
+    echo "Missing env SFC_TARGET_PROTO, aborting"
+    publish_mqtt "status" "infra_container_failed_env"
+    exit 1
+fi
+TARGET_PROTO="$SFC_TARGET_PROTO"
+
+
+if [ -z "$SFC_SIPFRONT_API" ]; then
+    echo "Missing env SFC_SIPFRONT_API, aborting"
+    publish_mqtt "status" "infra_container_failed_env"
+    exit 1
+fi
+SIPFRONT_API="$SFC_SIPFRONT_API"
+
+if [ -z "$SFC_SIPFRONT_API_TOKEN" ]; then
+    echo "Missing env SFC_SIPFRONT_API_TOKEN, aborting"
+    publish_mqtt "status" "infra_container_failed_env"
+    exit 1
+fi
+SIPFRONT_API_TOKEN="$SFC_SIPFRONT_API_TOKEN"
+
 if [ -z "$SFC_SCENARIO" ]; then
     echo "Missing env SFC_SCENARIO, aborting"
+    publish_mqtt "status" "infra_container_failed_env"
     exit 1
 fi
 SCENARIO="$SFC_SCENARIO"
@@ -139,6 +173,11 @@ if [ "$CREDENTIALS_CALLER" = "1" ]; then
     URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials/caller"
     echo "Fetching caller credentials from '$URL' to '$CREDENTIALS_CALLER_FILE'"
     curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
+    if [ $? -ne 0 ]; then
+        echo "Failed to fetch caller credentials from api, aborting..."
+        publish_mqtt "status" "infra_container_failed_creds"
+        exit 1
+    fi
 fi
 
 if [ "$CREDENTIALS_CALLEE" = "1" ]; then
@@ -146,6 +185,11 @@ if [ "$CREDENTIALS_CALLEE" = "1" ]; then
 
     echo "Fetching callee credentials from '$URL' to '$CREDENTIALS_CALLEE_FILE'"
     curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
+    if [ $? -ne 0 ]; then
+        echo "Failed to fetch callee credentials from api, aborting..."
+        publish_mqtt "status" "infra_container_failed_creds"
+        exit 1
+    fi
 fi
 
 CREDENTIAL_PARAMS=""
@@ -177,7 +221,6 @@ IPTABLES_OUT_DST="-p $TRANSPORT_PROTO $IPTABLES_OUT_DST"
 
 LOCAL_PORT="5060"
 TRANSPORT_MODE=""
-# TODO: port range for tcp, especially for iptables stats?
 case "$TRANSPORT_PROTO" in
     "udp")
         TRANSPORT_MODE="-t u1"
@@ -190,24 +233,6 @@ case "$TRANSPORT_PROTO" in
     *)
         ;;
 esac
-
-# setting iptables rules for traffic stats
-iptables -A OUTPUT $IPTABLES_OUT_DST -m comment --comment "sf-sip-out"
-iptables -A INPUT -p udp --dport 5060 -m comment --comment "sf-sip-in"
-iptables -A INPUT -p tcp --dport 5060:5061 -m comment --comment "sf-sip-in"
-{
-    while true; do
-        msg=$(iptables -n -L -v -x | grep 'sf-sip');
-        mosquitto_pub \
-            -t "$SM_MQTT_TOPICBASE/${SESSION_UUID}/netstat/${INSTANCE_UUID}" \
-            -h $SM_MQTT_HOST -p $SM_MQTT_PORT \
-            -m "$msg" \
-            --cafile /usr/share/ca-certificates/mozilla/Amazon_Root_CA_1.crt \
-            -u $SM_MQTT_USER -P $SM_MQTT_PASS;
-        sleep 1;
-    done; 
-} &
-loop_pid=$!
 
 # -nd -default_behaviors: no defaults, but abort on unexpected message
 # -aa: auto-answer 200 for INFO, NOTIFY, OPTIONS, UPDATE \
@@ -227,10 +252,9 @@ BEHAVIOR="-nd"
 echo "Starting sipp"
 ulimit -c unlimited
 
-# unarm, so we can dump errors below
-set +e
+publish_mqtt "status" "infra_container_start_sipp"
 
-timeout -s SIGUSR1 -k 60 "${TEST_DURATION}s" sipp \
+timeout -s SIGUSR1 -k 300 "${TEST_DURATION}s" sipp \
     $BEHAVIOR -l "$CONCURRENT_CALLS" \
     -aa $CALL_DURATION $TRANSPORT_MODE \
     -cid_str "sipfront-${SESSION_UUID}-%u-%p@%s" \
@@ -249,6 +273,7 @@ timeout -s SIGUSR1 -k 60 "${TEST_DURATION}s" sipp \
     -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
     -p $LOCAL_PORT \
     "$TARGET_HOST:$TARGET_PORT"
+sipp_ret=$?
 
 cat /*errors.log
 if ls core.* 1>/dev/null 2>/dev/null; then
@@ -258,4 +283,10 @@ if ls core.* 1>/dev/null 2>/dev/null; then
     gdb -x $CF /bin/sipp /core.*
 fi
 
-kill $loop_pid
+if [ $sipp_ret -eq 0 ]; then
+    publish_mqtt "status" "infra_container_normal_done"
+elif [ $sipp_ret -eq 124 ]; then
+    publish_mqtt "status" "infra_container_timeout_done"
+else
+    publish_mqtt "status" "infra_container_failed_done"
+fi
