@@ -275,6 +275,8 @@ timeout -s SIGUSR1 -k 300 "${TEST_DURATION}s" sipp \
     "$TARGET_HOST:$TARGET_PORT"
 sipp_ret=$?
 
+echo "Sipp finished, exit code is '$sipp_reg'"
+
 cat /*errors.log
 if ls core.* 1>/dev/null 2>/dev/null; then
     CF="/gdb.txt"
@@ -290,3 +292,5 @@ elif [ $sipp_ret -eq 124 ]; then
 else
     publish_mqtt "status" "infra_container_failed_done"
 fi
+
+echo "Task finished"
