@@ -254,6 +254,14 @@ esac
 
 BEHAVIOR="-nd"
 
+# TODO: start sipp for callee scenario, if set, then trigger success:
+
+echo "Checkin for AWS task token"
+if [ -n "$AWS_TASK_TOKEN" ]; then
+    echo "AWS task token set, send task-success event to step function"
+    aws stepfunctions send-task-success --task-token "$AWS_TASK_TOKEN" --task-output '{"status":{"gate":"passed"}}' --region eu-central-1
+fi
+
 echo "Starting sipp"
 ulimit -c unlimited
 
