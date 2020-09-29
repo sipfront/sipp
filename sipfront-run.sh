@@ -149,6 +149,11 @@ if ! [ -z "$SFC_TEST_DURATION" ]; then
     TEST_DURATION="$SFC_TEST_DURATION"
 fi
 
+MAX_TOTAL_CALLS=10000000
+if ! [ -z "$SFC_MAX_TOTAL_CALLS" ]; then
+    MAX_TOTAL_CALLS="$SFC_MAX_TOTAL_CALLS"
+fi
+
 CALL_DURATION=""
 if ! [ -z "$SFC_CALL_DURATION" ]; then
     CALL_DURATION="-d ${SFC_CALL_DURATION}000"
@@ -256,6 +261,7 @@ publish_mqtt "status" "infra_container_start_sipp"
 
 timeout -s SIGUSR1 -k 300 "${TEST_DURATION}s" sipp \
     $BEHAVIOR -l "$CONCURRENT_CALLS" \
+    -m "$MAX_TOTAL_CALLS" \
     -aa $CALL_DURATION $TRANSPORT_MODE \
     -cid_str "sipfront-${SESSION_UUID}-%u-%p@%s" \
     -base_cseq 1 \
