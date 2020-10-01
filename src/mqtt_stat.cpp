@@ -170,30 +170,34 @@ void MQTTStat::dumpData ()
         << JQC(CallLengthStDev(C), msToHHMMSSus((unsigned long)computeStdev(CPT_C_AverageCallLength_Sum, CPT_C_NbOfCallUsedForAverageCallLength, CPT_C_AverageCallLength_Squares)));
 
 
+    if (M_SizeOfResponseTimeRepartition) {
+        for (int i = 1; i <= nRtds(); i++) {
+            char s[80];
+            sprintf(s, "ResponseTimeRepartition%s", M_revRtdMap[i]);
+
+            for(int j = 0; j < (M_SizeOfResponseTimeRepartition - 1); j++) {
+                jsonData << "\"" << s << "_<" << M_ResponseTimeRepartition[i - 1][j].borderMax << "\":\"" << M_ResponseTimeRepartition[i - 1][j].nbInThisBorder << "\",";
+            }
+            jsonData << "\"" << s << "_>=" << M_ResponseTimeRepartition[i - 1][M_SizeOfResponseTimeRepartition - 1].borderMax << "\":\"" << M_ResponseTimeRepartition[i - 1][M_SizeOfResponseTimeRepartition - 1].nbInThisBorder << "\",";
+        }
+    }
+
+    if (M_SizeOfCallLengthRepartition) {
+        for(int j = 0; j < (M_SizeOfCallLengthRepartition - 1); j++) {
+            jsonData << "\"" << "CallLengthRepartition" << "_<" << M_CallLengthRepartition[j].borderMax << "\":\"" << M_CallLengthRepartition[j].nbInThisBorder << "\",";
+        }
+        jsonData << "\"" << "CallLengthRepartition" << "_>=" << M_CallLengthRepartition[M_SizeOfCallLengthRepartition - 1].borderMax << "\":\"" << M_CallLengthRepartition[M_SizeOfCallLengthRepartition - 1].nbInThisBorder << "\",";
+    }
+
     for (unsigned int i = 1; i < M_genericMap.size() + 1; i++) {
         jsonData
             << "\"" << M_revGenericMap[i] << "(P)\":\"" << M_genericCounters[GENERIC_TYPES * i + GENERIC_PL] << "\","
             << "\"" << M_revGenericMap[i] << "(C)\":\"" << M_genericCounters[GENERIC_TYPES * i + GENERIC_C] << "\",";
     }
 
-    for (int i = 1; i <= nRtds(); i++) {
-        char s[80];
-        sprintf(s, "ResponseTimeRepartition%s", M_revRtdMap[i]);
-
-        for(int j = 0; j < (M_SizeOfResponseTimeRepartition - 1); j++) {
-            jsonData << "\"" << s << "_<" << M_ResponseTimeRepartition[i - 1][j].borderMax << "\":\"" << M_ResponseTimeRepartition[i - 1][j].nbInThisBorder << "\",";
-        }
-        jsonData << "\"" << s << "_>=" << M_ResponseTimeRepartition[i - 1][M_SizeOfResponseTimeRepartition - 1].borderMax << "\":\"" << M_ResponseTimeRepartition[i - 1][M_SizeOfResponseTimeRepartition - 1].nbInThisBorder << "\",";
-    }
-
-    for(int j = 0; j < (M_SizeOfCallLengthRepartition - 1); j++) {
-        jsonData << "\"" << "CallLengthRepartition" << "_<" << M_CallLengthRepartition[j].borderMax << "\":\"" << M_CallLengthRepartition[j].nbInThisBorder << "\",";
-    }
-    jsonData << "\"" << "CallLengthRepartition" << "_>=" << M_CallLengthRepartition[M_SizeOfCallLengthRepartition - 1].borderMax << "\":\"" << M_CallLengthRepartition[M_SizeOfCallLengthRepartition - 1].nbInThisBorder << "\"";
-
-    jsonData << "}" << endl;
-
     std::string jsonDataStr = jsonData.str();
+    jsonDataStr.pop_back(); // remove trailing comma
+    jsonDataStr += "}";
 
     ret = mosquitto_publish(mqtt_handler, NULL, mqtt_stats_topic,
                    jsonDataStr.length(), jsonDataStr.c_str(),

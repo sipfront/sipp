@@ -7,6 +7,8 @@ project(SIPp)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
+
 if(EXISTS ./gmock/CMakeLists.txt)
   add_subdirectory(gmock EXCLUDE_FROM_ALL)
 endif()
@@ -66,6 +68,8 @@ endif(NOT USE_PCAP)
 if(NOT USE_MQTT)
   list(REMOVE_ITEM all_SRCS
     "${PROJECT_SOURCE_DIR}/src/mqtt_stat.cpp")
+  list(REMOVE_ITEM all_SRCS
+    "${PROJECT_SOURCE_DIR}/src/mqtt_logger.cpp")
 endif(NOT USE_MQTT)
 
 if(USE_SSL)
