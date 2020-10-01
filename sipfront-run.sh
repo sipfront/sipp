@@ -14,9 +14,11 @@ function send_trigger() {
     token="$1"
     status="$2"
     task_arn="$3"
+    state_index="$4"
 
     if [ -n "$token" ]; then
-        aws stepfunctions send-task-success --task-token "$token" --task-output "{\"status\":{\"gate\":\"$status\"}, \"taskarn\":\"$task_arn\"}" --region eu-central-1
+        aws stepfunctions send-task-success --task-token "$token" \
+            --task-output "{\"status\":{\"gate\":\"$status\"}, \"taskarn\":\"$task_arn\", \"state_index\":\"$state_index\"}" --region eu-central-1
     fi
 }
 
@@ -63,6 +65,13 @@ MQTT_CA_FILE="-mqtt_ca_file $AWS_CA_FILE"
 ########################################################################
 # mqtt specific checks, so we can publish state
 ########################################################################
+
+if [ -z "$SFC_STATE_INDEX" ]; then
+    echo "Missing env SFC_STATE_INDEX, aborting"
+    send_trigger "$AWS_TASK_TOKEN" "failed"
+    exit 1
+fi
+STATE_INDEX="$SFC_STATE_INDEX"
 
 if [ -z "$SFC_SESSION_UUID" ]; then
     echo "Missing env SFC_SESSION_UUID, aborting"
@@ -164,16 +173,16 @@ if [ -z "$SFC_SIPFRONT_API_TOKEN" ]; then
 fi
 SIPFRONT_API_TOKEN="$SFC_SIPFRONT_API_TOKEN"
 
+var="S_${STATE_INDEX}_SFC_ACTIONS"
+SFC_ACTIONS=${!var}
 if [ -z "$SFC_ACTIONS" ]; then
-    echo "Missing env SFC_ACTION, aborting"
+    echo "Missing env $var, aborting"
     publish_mqtt "status" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
-ACTIONS="$SFC_ACTIONS"
-
 if [ "$SFC_ACTIONS" -lt "1" ]; then
-    echo "Invalid env SFC_ACTION, must be >= 1"
+    echo "Invalid env $var, must be >= 1"
     publish_mqtt "status" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
@@ -222,7 +231,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
              SFC_TEST_DURATION SFC_MAX_TOTAL_CALLS SFC_CALL_DURATION \
              SFC_REGISTRATION_EXPIRE SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE; do
 
-        var="A_${i}_${v}";
+        var="S_${STATE_INDEX}_A_${i}_${v}";
         declare "${v}"="${!var}";
         echo "$var = ${v} = ${!var}"
     done
@@ -405,7 +414,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     echo "Checkin for AWS task token"
     if [ "$SFC_TRIGGER_STEP" -eq "1" ]; then
         echo "Triggering AWS step function task change"
-        send_trigger "$AWS_TASK_TOKEN" "$trigger_state" "$TASK_ARN"
+        send_trigger "$AWS_TASK_TOKEN" "$trigger_state" "$TASK_ARN" "$((STATE_INDEX+1))"
     fi
 
 done
