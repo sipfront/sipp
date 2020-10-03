@@ -9,6 +9,7 @@ PATH="/bin:/usr/bin"
 INSTANCE_UUID=$(uuidgen);
 CREDENTIALS_CALLER_FILE="/etc/sipfront-credentials/caller.csv"
 CREDENTIALS_CALLEE_FILE="/etc/sipfront-credentials/callee.csv"
+STATS_ROLE="caller" # will be overridden by action
 
 function send_trigger() {
     token="$1"
@@ -116,17 +117,18 @@ fi
 
 function publish_mqtt() {
     topic="$1"
-    message="$2"
+    role="$2"
+    message="$3"
 
     mosquitto_pub \
-        -t "$SM_MQTT_TOPICBASE/${SESSION_UUID}/$topic/${INSTANCE_UUID}" \
+        -t "$SM_MQTT_TOPICBASE/${SESSION_UUID}/$topic/$role/${INSTANCE_UUID}" \
         -h "$SM_MQTT_HOST" -p "$SM_MQTT_PORT" \
         -m "$message" \
         --cafile "$AWS_CA_FILE" \
         -u "$SM_MQTT_USER" -P "$SM_MQTT_PASS";
 }
 
-publish_mqtt "status" "infra_container_started"
+publish_mqtt "status" "$STATS_ROLE" "infra_container_started"
 
 ########################################################################
 # scenario specific checks
@@ -134,7 +136,7 @@ publish_mqtt "status" "infra_container_started"
 
 if [ -z "$SFC_TARGET_HOST" ]; then
     echo "Missing env SFC_TARGET_HOST, aborting"
-    publish_mqtt "status" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -142,7 +144,7 @@ TARGET_HOST="$SFC_TARGET_HOST"
 
 if [ -z "$SFC_TARGET_PORT" ]; then
     echo "Missing env SFC_TARGET_PORT, aborting"
-    publish_mqtt "status" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -150,7 +152,7 @@ TARGET_PORT="$SFC_TARGET_PORT"
 
 if [ -z "$SFC_TARGET_PROTO" ]; then
     echo "Missing env SFC_TARGET_PROTO, aborting"
-    publish_mqtt "status" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -159,7 +161,7 @@ TARGET_PROTO="$SFC_TARGET_PROTO"
 
 if [ -z "$SFC_SIPFRONT_API" ]; then
     echo "Missing env SFC_SIPFRONT_API, aborting"
-    publish_mqtt "status" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -167,7 +169,7 @@ SIPFRONT_API="$SFC_SIPFRONT_API"
 
 if [ -z "$SFC_SIPFRONT_API_TOKEN" ]; then
     echo "Missing env SFC_SIPFRONT_API_TOKEN, aborting"
-    publish_mqtt "status" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -177,13 +179,13 @@ var="S_${STATE_INDEX}_SFC_ACTIONS"
 SFC_ACTIONS=${!var}
 if [ -z "$SFC_ACTIONS" ]; then
     echo "Missing env $var, aborting"
-    publish_mqtt "status" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
 if [ "$SFC_ACTIONS" -lt "1" ]; then
     echo "Invalid env $var, must be >= 1"
-    publish_mqtt "status" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -229,7 +231,8 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
 
     for v in SFC_TRIGGER_STEP SFC_SCENARIO SFC_CALL_RATE SFC_CONCURRENT_CALLS \
              SFC_TEST_DURATION SFC_MAX_TOTAL_CALLS SFC_CALL_DURATION \
-             SFC_REGISTRATION_EXPIRE SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE; do
+             SFC_REGISTRATION_EXPIRE SFC_STATS_ROLE \
+             SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE; do
 
         var="S_${STATE_INDEX}_A_${i}_${v}";
         declare "${v}"="${!var}";
@@ -238,7 +241,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
 
     if [ -z "$SFC_SCENARIO" ]; then
         echo "Missing env A_${i}_SFC_SCENARIO, aborting"
-        publish_mqtt "status" "infra_container_failed_env"
+        publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
         send_trigger "$AWS_TASK_TOKEN" "failed"
         exit 1
     fi
@@ -275,6 +278,11 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         REGISTRATION_EXPIRE="$SFC_REGISTRATION_EXPIRE"
     fi
 
+    STATS_ROLE="caller"
+    if ! [ -z "$SFC_STATS_ROLE" ]; then
+        STATS_ROLE="$SFC_STATS_ROLE"
+    fi
+
     CREDENTIALS_CALLER="$SFC_CREDENTIALS_CALLER"
     CREDENTIALS_CALLEE="$SFC_CREDENTIALS_CALLEE"
 
@@ -288,7 +296,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
         if [ $? -ne 0 ]; then
             echo "Failed to fetch caller credentials from api, aborting..."
-            publish_mqtt "status" "infra_container_failed_creds"
+            publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_creds"
             send_trigger "$AWS_TASK_TOKEN" "failed"
             exit 1
         fi
@@ -301,7 +309,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
         if [ $? -ne 0 ]; then
             echo "Failed to fetch callee credentials from api, aborting..."
-            publish_mqtt "status" "infra_container_failed_creds"
+            publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_creds"
             send_trigger "$AWS_TASK_TOKEN" "failed"
             exit 1
         fi
@@ -336,7 +344,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     echo "Starting sipp"
     ulimit -c unlimited
 
-    publish_mqtt "status" "infra_container_start_sipp"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_start_sipp"
 
     echo timeout -s SIGUSR1 -k 300 "${TEST_DURATION}s" sipp \
         $BEHAVIOR -l "$CONCURRENT_CALLS" \
@@ -347,11 +355,11 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -trace_stat -fd 1 \
         -trace_rtt -rtt_freq "$CALL_RATE" \
         -mqtt_stats 1 \
-        -mqtt_stats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/call/${INSTANCE_UUID}" \
-        -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${INSTANCE_UUID}" \
-        -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${INSTANCE_UUID}" \
-        -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${INSTANCE_UUID}" \
-        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/$SESSION_UUID" \
+        -mqtt_stats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/call/${STATS_ROLE}/${INSTANCE_UUID}" \
+        -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
+        -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${STATS_ROLE}/${INSTANCE_UUID}" \
+        -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
+        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/${STATS_ROLE}/" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
         -trace_err \
         -r "$CALL_RATE" \
@@ -366,13 +374,14 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -cid_str "sipfront-${SESSION_UUID}-%u-%p@%s" \
         -base_cseq 1 \
         -trace_stat -fd 1 \
+        -trace_stat -fd 1 \
         -trace_rtt -rtt_freq "$CALL_RATE" \
         -mqtt_stats 1 \
-        -mqtt_stats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/call/${INSTANCE_UUID}" \
-        -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${INSTANCE_UUID}" \
-        -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${INSTANCE_UUID}" \
-        -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${INSTANCE_UUID}" \
-        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/$SESSION_UUID" \
+        -mqtt_stats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/call/${STATS_ROLE}/${INSTANCE_UUID}" \
+        -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
+        -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${STATS_ROLE}/${INSTANCE_UUID}" \
+        -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
+        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/${STATS_ROLE}/" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
         -trace_err \
         -r "$CALL_RATE" \
@@ -397,16 +406,16 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     fi
 
     if [ $sipp_ret -eq 0 ]; then
-        publish_mqtt "status" "infra_action_normal_done"
+        publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
         trigger_state="passed"
     elif [ $sipp_ret -eq 1 ]; then
-        publish_mqtt "status" "infra_action_hardtimeout_done"
+        publish_mqtt "status" "$STATS_ROLE" "infra_action_hardtimeout_done"
         trigger_state="passed"
     elif [ $sipp_ret -eq 124 ]; then
-        publish_mqtt "status" "infra_action_timeout_done"
+        publish_mqtt "status" "$STATS_ROLE" "infra_action_timeout_done"
         trigger_state="passed"
     else
-        publish_mqtt "status" "infra_action_failed_done"
+        publish_mqtt "status" "$STATS_ROLE" "infra_action_failed_done"
         trigger_state="failed"
     fi
     rm -f /*errors.log /core*
@@ -421,11 +430,11 @@ done
 
 # publish last exit status
 if [ $sipp_ret -eq 0 ]; then
-    publish_mqtt "status" "infra_container_normal_done"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_normal_done"
 elif [ $sipp_ret -eq 124 ]; then
-    publish_mqtt "status" "infra_container_timeout_done"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_timeout_done"
 else
-    publish_mqtt "status" "infra_container_failed_done"
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_done"
 fi
 
 echo "Task finished"
