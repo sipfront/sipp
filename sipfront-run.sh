@@ -229,10 +229,11 @@ esac
 
 for i in $( seq 0 $((ACTIONS-1)) ); do
 
-    for v in SFC_TRIGGER_STEP SFC_SCENARIO SFC_CALL_RATE SFC_CONCURRENT_CALLS \
-             SFC_TEST_DURATION SFC_MAX_TOTAL_CALLS SFC_CALL_DURATION \
-             SFC_REGISTRATION_EXPIRE SFC_STATS_ROLE \
-             SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE; do
+    for v in SFC_TRIGGER_STEP SFC_SCENARIO SFC_STATS_ROLE \
+             SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE \
+             SFC_PERF_TEST_DURATION SFC_PERF_MAX_TOTAL_CALLS \
+             SFC_PERF_CALL_DURATION SFC_PERF_CAPS SFC_PERF_CC \
+             SFC_PERF_REGEXPIRE SFC_STATS_ROLE; do
 
         var="S_${STATE_INDEX}_A_${i}_${v}";
         declare "${v}"="${!var}";
@@ -249,33 +250,33 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     SCENARIO_FILE="/etc/sipfront-scenarios/${SCENARIO}.xml"
 
     CALL_RATE=0
-    if ! [ -z "$SFC_CALL_RATE" ]; then
-        CALL_RATE="$SFC_CALL_RATE"
+    if ! [ -z "$SFC_PERF_CAPS" ]; then
+        CALL_RATE="$SFC_PERF_CAPS"
     fi
 
     CONCURRENT_CALLS=1000000
-    if ! [ -z "$SFC_CONCURRENT_CALLS" ]; then
-        CONCURRENT_CALLS="$SFC_CONCURRENT_CALLS"
+    if ! [ -z "$SFC_PERF_CC" ]; then
+        CONCURRENT_CALLS="$SFC_PERF_CC"
     fi
 
     TEST_DURATION=43200
-    if ! [ -z "$SFC_TEST_DURATION" ]; then
-        TEST_DURATION="$SFC_TEST_DURATION"
+    if ! [ -z "$SFC_PERF_TEST_DURATION" ]; then
+        TEST_DURATION="$SFC_PERF_TEST_DURATION"
     fi
 
     MAX_TOTAL_CALLS=10000000
-    if ! [ -z "$SFC_MAX_TOTAL_CALLS" ]; then
-        MAX_TOTAL_CALLS="$SFC_MAX_TOTAL_CALLS"
+    if ! [ -z "$SFC_PERF_MAX_TOTAL_CALLS" ]; then
+        MAX_TOTAL_CALLS="$SFC_PERF_MAX_TOTAL_CALLS"
     fi
 
     CALL_DURATION=""
-    if ! [ -z "$SFC_CALL_DURATION" ]; then
-        CALL_DURATION="-d ${SFC_CALL_DURATION}000"
+    if ! [ -z "$SFC_PERF_CALL_DURATION" ]; then
+        CALL_DURATION="-d ${SFC_PERF_CALL_DURATION}000"
     fi
 
     REGISTRATION_EXPIRE=0
-    if ! [ -z "$SFC_REGISTRATION_EXPIRE" ]; then
-        REGISTRATION_EXPIRE="$SFC_REGISTRATION_EXPIRE"
+    if ! [ -z "$SFC_PERF_REGEXPIRE" ]; then
+        REGISTRATION_EXPIRE="$SFC_PERF_REGEXPIRE"
     fi
 
     STATS_ROLE="caller"
