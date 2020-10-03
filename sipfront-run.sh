@@ -249,9 +249,9 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     SCENARIO="$SFC_SCENARIO"
     SCENARIO_FILE="/etc/sipfront-scenarios/${SCENARIO}.xml"
 
-    CALL_RATE=0
+    CALL_RATE=""
     if ! [ -z "$SFC_PERF_CAPS" ]; then
-        CALL_RATE="$SFC_PERF_CAPS"
+        CALL_RATE="-r $SFC_PERF_CAPS"
     fi
 
     CONCURRENT_CALLS=1000000
@@ -354,7 +354,6 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -cid_str "sipfront-${SESSION_UUID}-%u-%p@%s" \
         -base_cseq 1 \
         -trace_stat -fd 1 \
-        -trace_rtt -rtt_freq "$CALL_RATE" \
         -mqtt_stats 1 \
         -mqtt_stats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/call/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
@@ -362,8 +361,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/${STATS_ROLE}/" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
-        -trace_err \
-        -r "$CALL_RATE" \
+        -trace_err $CALL_RATE \
         -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
         -p $LOCAL_PORT \
         "$TARGET_HOST:$TARGET_PORT"
@@ -375,8 +373,6 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -cid_str "sipfront-${SESSION_UUID}-%u-%p@%s" \
         -base_cseq 1 \
         -trace_stat -fd 1 \
-        -trace_stat -fd 1 \
-        -trace_rtt -rtt_freq "$CALL_RATE" \
         -mqtt_stats 1 \
         -mqtt_stats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/call/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
@@ -384,8 +380,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/${STATS_ROLE}/" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
-        -trace_err \
-        -r "$CALL_RATE" \
+        -trace_err $CALL_RATE \
         -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
         -p $LOCAL_PORT \
         "$TARGET_HOST:$TARGET_PORT"
