@@ -233,6 +233,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
              SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE \
              SFC_PERF_TEST_DURATION SFC_PERF_MAX_TOTAL_CALLS \
              SFC_PERF_CALL_DURATION SFC_PERF_CAPS SFC_PERF_CC \
+             SFC_TRIGGER_READY \
              SFC_PERF_REGEXPIRE SFC_STATS_ROLE; do
 
         var="S_${STATE_INDEX}_A_${i}_${v}";
@@ -347,6 +348,13 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
 
     publish_mqtt "status" "$STATS_ROLE" "infra_container_start_sipp"
 
+    echo "Checkin for ready-trigger"
+    if [ "$SFC_TRIGGER_READY" -eq "1" ]; then
+        echo "Triggering ready state so consumers can start drawing"
+        send_trigger "$AWS_TASK_TOKEN" "$trigger_state" "$TASK_ARN" "$((STATE_INDEX+1))"
+        publish_mqtt "status" "$STATS_ROLE" "infra_action_ready"
+    fi
+
     echo timeout -s SIGUSR1 -k 300 "${TEST_DURATION}s" sipp \
         $BEHAVIOR -l "$CONCURRENT_CALLS" \
         -m "$MAX_TOTAL_CALLS" \
@@ -384,14 +392,15 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
         -p $LOCAL_PORT \
         "$TARGET_HOST:$TARGET_PORT"
-    sipp_ret=$?
+
+    sipp_ret="$?"
 
     # if we get killed by "timeout -k" after unsuccessful shutdown, we have no exit code
     if [ -z "$sipp_ret" ]; then
         sipp_ret=1
     fi
 
-    echo "Sipp finished, exit code is '$sipp_reg'"
+    echo "Sipp finished, exit code is '$sipp_ret'"
 
     cat /*errors.log
     if ls /core.* 1>/dev/null 2>/dev/null; then
