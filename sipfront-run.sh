@@ -156,7 +156,7 @@ if [ -z "$SFC_TARGET_PROTO" ]; then
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
-TARGET_PROTO="$SFC_TARGET_PROTO"
+TARGET_PROTO=$(echo "$SFC_TARGET_PROTO" | tr '[:upper:]' '[:lower:]')
 
 
 if [ -z "$SFC_SIPFRONT_API" ]; then
@@ -203,7 +203,7 @@ fi
 
 TRANSPORT_PROTO="$TARGET_PROTO"
 if [ -n "$OUTBOUND_PROXY" ] && [ -n "$SFC_OUTBOUND_PROTO" ]; then
-    TRANSPORT_PROTO="$SFC_OUTBOUND_PROTO"
+    TRANSPORT_PROTO=$(echo "$SFC_OUTBOUND_PROTO" | tr '[:upper:]' '[:lower:]')
 fi
 
 LOCAL_PORT="5060"
