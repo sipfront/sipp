@@ -213,7 +213,7 @@ case "$TRANSPORT_PROTO" in
         TRANSPORT_MODE="-t u1"
         ;;
     "tcp")
-        TRANSPORT_MODE="-t tn -max_socket 50000"
+        TRANSPORT_MODE="-t tn -max_socket 1024"
         ;;
     "tls")
         ;;
