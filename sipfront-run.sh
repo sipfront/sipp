@@ -387,7 +387,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
-        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/${STATS_ROLE}/" \
+        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/${STATS_ROLE}" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
         -trace_err $CALL_RATE \
         -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
