@@ -121,6 +121,8 @@ function publish_mqtt() {
     message="$3"
 
     mosquitto_pub \
+        -i "sipp_${SESSION_UUID}_${INSTANCE_UUID}" \
+        -q 1 \
         -t "$SM_MQTT_TOPICBASE/${SESSION_UUID}/$topic/$role/${INSTANCE_UUID}" \
         -h "$SM_MQTT_HOST" -p "$SM_MQTT_PORT" \
         -m "$message" \
@@ -234,7 +236,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
              SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE \
              SFC_PERF_TEST_DURATION SFC_PERF_MAX_TOTAL_CALLS \
              SFC_PERF_CALL_DURATION SFC_PERF_CAPS SFC_PERF_CC \
-             SFC_TRIGGER_READY \
+             SFC_TRIGGER_READY SFC_TRIGGER_QUIT \
              SFC_PERF_REGEXPIRE SFC_STATS_ROLE; do
 
         var="S_${STATE_INDEX}_A_${i}_${v}";
@@ -342,8 +344,6 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
 
     BEHAVIOR="-nd"
 
-    # TODO: start sipp for callee scenario, if set, then trigger success:
-
     echo "Starting sipp"
     ulimit -c unlimited
 
@@ -368,7 +368,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
-        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/${STATS_ROLE}/" \
+        -mqtt_ctrl 1 -mqtt_ctrl_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/ctrl/#" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
         -trace_err $CALL_RATE \
         -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
@@ -387,7 +387,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
-        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/${STATS_ROLE}" \
+        -mqtt_ctrl 1 -mqtt_ctrl_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/ctrl/#" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
         -trace_err $CALL_RATE \
         -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
@@ -430,6 +430,13 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     if [ "$SFC_TRIGGER_STEP" -eq "1" ]; then
         echo "Triggering AWS step function task change"
         send_trigger "$AWS_TASK_TOKEN" "$trigger_state" "$TASK_ARN" "$((STATE_INDEX+1))"
+    fi
+
+    echo "Checkin for quit-trigger"
+    if [ "$SFC_TRIGGER_QUIT" -eq "1" ]; then
+        echo "Triggering quit state to shutdown all other sipp callee instances"
+        
+        publish_mqtt "ctrl" "callee" "q"
     fi
 
 done
