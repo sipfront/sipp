@@ -520,8 +520,8 @@ done
 # publish last exit status
 if [ $sipp_ret -eq 0 ]; then
     publish_mqtt "status" "$STATS_ROLE" "infra_container_normal_done"
-elif [ $sipp_ret -eq 124 ]; then
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_timeout_done"
+elif [ $sipp_ret -eq 1 ]; then
+    publish_mqtt "status" "$STATS_ROLE" "infra_container_normal_done"
 else
     publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_done"
 fi
