@@ -395,7 +395,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         publish_mqtt "status" "$STATS_ROLE" "infra_action_ready"
     fi
 
-    sipp \
+    echo sipp \
         -timeout "${TEST_DURATION}s" \
         $BEHAVIOR -l "$CONCURRENT_CALLS" \
         -m "$MAX_TOTAL_CALLS" \
