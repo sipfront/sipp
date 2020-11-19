@@ -292,36 +292,6 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     SCENARIO="$SFC_SCENARIO"
     SCENARIO_FILE="/etc/sipfront-scenarios/${SCENARIO}.xml"
 
-    CALL_RATE=""
-    if ! [ -z "$SFC_PERF_CAPS" ]; then
-        CALL_RATE="-r $SFC_PERF_CAPS"
-    fi
-
-    CONCURRENT_CALLS=1000000
-    if ! [ -z "$SFC_PERF_CC" ]; then
-        CONCURRENT_CALLS="$SFC_PERF_CC"
-    fi
-
-    TEST_DURATION=43200
-    if ! [ -z "$SFC_PERF_TEST_DURATION" ]; then
-        TEST_DURATION="$SFC_PERF_TEST_DURATION"
-    fi
-
-    MAX_TOTAL_CALLS=10000000
-    if ! [ -z "$SFC_PERF_MAX_TOTAL_CALLS" ]; then
-        MAX_TOTAL_CALLS="$SFC_PERF_MAX_TOTAL_CALLS"
-    fi
-
-    CALL_DURATION=""
-    if ! [ -z "$SFC_PERF_CALL_DURATION" ]; then
-        CALL_DURATION="-d ${SFC_PERF_CALL_DURATION}000"
-    fi
-
-    REGISTRATION_EXPIRE=0
-    if ! [ -z "$SFC_PERF_REGEXPIRE" ]; then
-        REGISTRATION_EXPIRE="$SFC_PERF_REGEXPIRE"
-    fi
-
     STATS_ROLE="caller"
     if ! [ -z "$SFC_STATS_ROLE" ]; then
         STATS_ROLE="$SFC_STATS_ROLE"
@@ -359,14 +329,77 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         fi
     fi
 
+    caller_credentials=0
+    callee_credentials=0
     CREDENTIAL_PARAMS=""
     if [ -e "$CREDENTIALS_CALLER_FILE" ]; then
         CREDENTIAL_PARAMS="$CREDENTIAL_PARAMS -inf $CREDENTIALS_CALLER_FILE"
+        caller_credentials=$(wc -l "$CREDENTIALS_CALLER_FILE" | awk '{print $1-1}')
     fi
     if [ -e "$CREDENTIALS_CALLEE_FILE" ]; then
         CREDENTIAL_PARAMS="$CREDENTIAL_PARAMS -inf $CREDENTIALS_CALLEE_FILE"
+        callee_credentials=$(wc -l "$CREDENTIALS_CALLEE_FILE" | awk '{print $1-1}')
     fi
 
+    CALL_RATE=""
+    if ! [ -z "$SFC_PERF_CAPS" ]; then
+        if [ "$SFC_PERF_CAPS" = "caller_credentials" ]; then
+            SFC_PERF_CAPS=$caller_credentials;
+        elif [ "$SFC_PERF_CAPS" = "callee_credentials" ]; then
+            SFC_PERF_CAPS=$callee_credentials;
+        fi
+        CALL_RATE="-r $SFC_PERF_CAPS"
+    fi
+
+    CONCURRENT_CALLS=1000000
+    if ! [ -z "$SFC_PERF_CC" ]; then
+        if [ "$SFC_PERF_CC" = "caller_credentials" ]; then
+            SFC_PERF_CC=$caller_credentials;
+        elif [ "$SFC_PERF_CC" = "callee_credentials" ]; then
+            SFC_PERF_CC=$callee_credentials;
+        fi
+        CONCURRENT_CALLS="$SFC_PERF_CC"
+    fi
+
+    TEST_DURATION=43200
+    if ! [ -z "$SFC_PERF_TEST_DURATION" ]; then
+        if [ "$SFC_PERF_TEST_DURATION" = "caller_credentials" ]; then
+            SFC_PERF_TEST_DURATION=$caller_credentials;
+        elif [ "$SFC_PERF_TEST_DURATION" = "callee_credentials" ]; then
+            SFC_PERF_TEST_DURATION=$callee_credentials;
+        fi
+        TEST_DURATION="$SFC_PERF_TEST_DURATION"
+    fi
+
+    MAX_TOTAL_CALLS=10000000
+    if ! [ -z "$SFC_PERF_MAX_TOTAL_CALLS" ]; then
+        if [ "$SFC_PERF_MAX_TOTAL_CALLS" = "caller_credentials" ]; then
+            SFC_PERF_MAX_TOTAL_CALLS=$caller_credentials;
+        elif [ "$SFC_PERF_MAX_TOTAL_CALLS" = "callee_credentials" ]; then
+            SFC_PERF_MAX_TOTAL_CALLS=$callee_credentials;
+        fi
+        MAX_TOTAL_CALLS="$SFC_PERF_MAX_TOTAL_CALLS"
+    fi
+
+    CALL_DURATION=""
+    if ! [ -z "$SFC_PERF_CALL_DURATION" ]; then
+        if [ "$SFC_PERF_CALL_DURATION" = "caller_credentials" ]; then
+            SFC_PERF_CALL_DURATION=$caller_credentials;
+        elif [ "$SFC_PERF_CALL_DURATION" = "callee_credentials" ]; then
+            SFC_PERF_CALL_DURATION=$callee_credentials;
+        fi
+        CALL_DURATION="-d ${SFC_PERF_CALL_DURATION}000"
+    fi
+
+    REGISTRATION_EXPIRE=0
+    if ! [ -z "$SFC_PERF_REGEXPIRE" ]; then
+        if [ "$SFC_PERF_REGEXPIRE" = "caller_credentials" ]; then
+            SFC_PERF_REGEXPIRE=$caller_credentials;
+        elif [ "$SFC_PERF_REGEXPIRE" = "callee_credentials" ]; then
+            SFC_PERF_REGEXPIRE=$callee_credentials;
+        fi
+        REGISTRATION_EXPIRE="$SFC_PERF_REGEXPIRE"
+    fi
 
     # -nd -default_behaviors: no defaults, but abort on unexpected message
     # -aa: auto-answer 200 for INFO, NOTIFY, OPTIONS, UPDATE \
