@@ -115,15 +115,54 @@ if [ -z "$SM_MQTT_TOPICBASE" ]; then
     exit 1
 fi
 
+function subscribe_mqtt() {
+    topic="$1"
+    opt_base="$2"
+
+    TOPIC_BASE="$SM_MQTT_TOPICBASE"
+    if [ -n "$opt_base" ]; then
+        TOPIC_BASE="$opt_base"
+    fi
+
+    echo mosquitto_sub \
+        -i "sipp_${SESSION_UUID}_${INSTANCE_UUID}" \
+        -t "${TOPIC_BASE}/${SESSION_UUID}/$topic" \
+        -h "$SM_MQTT_HOST" -p "$SM_MQTT_PORT" \
+        --cafile "$AWS_CA_FILE" \
+        -u "$SM_MQTT_USER" -P "$SM_MQTT_PASS";
+
+    mosquitto_sub \
+        -i "sipp_${SESSION_UUID}_${INSTANCE_UUID}" \
+        -t "${TOPIC_BASE}/${SESSION_UUID}/$topic" \
+        -h "$SM_MQTT_HOST" -p "$SM_MQTT_PORT" \
+        --cafile "$AWS_CA_FILE" \
+        -u "$SM_MQTT_USER" -P "$SM_MQTT_PASS";
+}
+
 function publish_mqtt() {
     topic="$1"
     role="$2"
     message="$3"
+    opt_base="$4"
+
+    TOPIC_BASE="$SM_MQTT_TOPICBASE"
+    if [ -n "$opt_base" ]; then
+        TOPIC_BASE="$opt_base"
+    fi
+
+    echo mosquitto_pub \
+        -i "sipp_${SESSION_UUID}_${INSTANCE_UUID}" \
+        -q 1 \
+        -t "${TOPIC_BASE}/${SESSION_UUID}/$topic/$role/${INSTANCE_UUID}" \
+        -h "$SM_MQTT_HOST" -p "$SM_MQTT_PORT" \
+        -m "$message" \
+        --cafile "$AWS_CA_FILE" \
+        -u "$SM_MQTT_USER" -P "$SM_MQTT_PASS";
 
     mosquitto_pub \
         -i "sipp_${SESSION_UUID}_${INSTANCE_UUID}" \
         -q 1 \
-        -t "$SM_MQTT_TOPICBASE/${SESSION_UUID}/$topic/$role/${INSTANCE_UUID}" \
+        -t "${TOPIC_BASE}/${SESSION_UUID}/$topic/$role/${INSTANCE_UUID}" \
         -h "$SM_MQTT_HOST" -p "$SM_MQTT_PORT" \
         -m "$message" \
         --cafile "$AWS_CA_FILE" \
@@ -245,7 +284,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     done
 
     if [ -z "$SFC_SCENARIO" ]; then
-        echo "Missing env A_${i}_SFC_SCENARIO, aborting"
+        echo "Missing env S_${STATE_INDEX}_A_${i}_SFC_SCENARIO, aborting"
         publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
         send_trigger "$AWS_TASK_TOKEN" "failed"
         exit 1
@@ -368,7 +407,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
-        -mqtt_ctrl 1 -mqtt_ctrl_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/ctrl/#" \
+        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/ctrl/#" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
         -trace_err $CALL_RATE \
         -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
@@ -387,7 +426,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -mqtt_rttstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/rtt/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_countstats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/count/${STATS_ROLE}/${INSTANCE_UUID}" \
         -mqtt_codestats_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/code/${STATS_ROLE}/${INSTANCE_UUID}" \
-        -mqtt_ctrl 1 -mqtt_ctrl_topic "${SM_MQTT_TOPICBASE}/${SESSION_UUID}/ctrl/#" \
+        -mqtt_ctrl 1 -mqtt_ctrl_topic "/sipp/ctrl/${SESSION_UUID}/ctrl/#" \
         $MQTT_HOST $MQTT_PORT $MQTT_USER $MQTT_PASS $MQTT_CA_FILE \
         -trace_err $CALL_RATE \
         -sf $SCENARIO_FILE $CREDENTIAL_PARAMS \
@@ -436,7 +475,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     if [ "$SFC_TRIGGER_QUIT" -eq "1" ]; then
         echo "Triggering quit state to shutdown all other sipp callee instances"
         
-        publish_mqtt "ctrl" "callee" "q"
+        publish_mqtt "ctrl" "callee" "q" "/sipp/ctrl"
     fi
 
 done
