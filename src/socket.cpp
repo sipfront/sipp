@@ -321,6 +321,9 @@ static bool process_command(char* command)
         process_dump(rest);
     } else if (!strcmp(command, "reset")) {
         process_reset(rest);
+    } else if (!strcmp(command, "forcequit")) {
+        WARNING("Forcing quit\n");
+        exit(0);
     } else {
         WARNING("Unrecognized command: \"%s\"", command);
     }
@@ -1322,6 +1325,7 @@ void process_message(SIPpSocket *socket, char *msg, ssize_t msg_size, struct soc
             if (quitting >= 1) {
                 CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
                 TRACE_MSG("Discarded message for new calls while quitting\n");
+                WARNING("agranig: Discarded message for new calls while quitting\n");
                 return;
             }
 

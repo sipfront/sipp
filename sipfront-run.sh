@@ -395,7 +395,8 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         publish_mqtt "status" "$STATS_ROLE" "infra_action_ready"
     fi
 
-    echo timeout -s SIGUSR1 -k 300 "${TEST_DURATION}s" sipp \
+    sipp \
+        -timeout "${TEST_DURATION}s" \
         $BEHAVIOR -l "$CONCURRENT_CALLS" \
         -m "$MAX_TOTAL_CALLS" \
         -aa $CALL_DURATION $TRANSPORT_MODE \
@@ -414,7 +415,8 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         -p $LOCAL_PORT \
         "$TARGET_HOST:$TARGET_PORT"
 
-    timeout -s SIGUSR1 -k 300 "${TEST_DURATION}s" sipp \
+    sipp \
+        -timeout "${TEST_DURATION}s" \
         $BEHAVIOR -l "$CONCURRENT_CALLS" \
         -m "$MAX_TOTAL_CALLS" \
         -aa $CALL_DURATION $TRANSPORT_MODE \
@@ -435,11 +437,6 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
 
     sipp_ret="$?"
 
-    # if we get killed by "timeout -k" after unsuccessful shutdown, we have no exit code
-    if [ -z "$sipp_ret" ]; then
-        sipp_ret=1
-    fi
-
     echo "Sipp finished, exit code is '$sipp_ret'"
 
     cat /*errors.log
@@ -451,13 +448,20 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     fi
 
     if [ $sipp_ret -eq 0 ]; then
+        # all calls successful
         publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
         trigger_state="passed"
     elif [ $sipp_ret -eq 1 ]; then
-        publish_mqtt "status" "$STATS_ROLE" "infra_action_hardtimeout_done"
+        # at least one call failed
+        publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
         trigger_state="passed"
-    elif [ $sipp_ret -eq 124 ]; then
-        publish_mqtt "status" "$STATS_ROLE" "infra_action_timeout_done"
+    elif [ $sipp_ret -eq 97 ]; then
+        # exit on internal command
+        publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
+        trigger_state="passed"
+    elif [ $sipp_ret -eq 99 ]; then
+        # normal exit without calls
+        publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
         trigger_state="passed"
     else
         publish_mqtt "status" "$STATS_ROLE" "infra_action_failed_done"
@@ -475,7 +479,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     if [ "$SFC_TRIGGER_QUIT" -eq "1" ]; then
         echo "Triggering quit state to shutdown all other sipp callee instances"
         
-        publish_mqtt "ctrl" "callee" "q" "/sipp/ctrl"
+        publish_mqtt "ctrl" "callee" "Q" "/sipp/ctrl"
     fi
 
 done

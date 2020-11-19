@@ -394,6 +394,7 @@ struct sipp_option options_table[] = {
     {"max_log_size", "What is the limit for error, message, shortmessage and calldebug file sizes.", SIPP_OPTION_LONG_LONG, &max_log_size, 1},
 
 #ifdef USE_MQTT
+    {"", "MQTT options:", SIPP_HELP_TEXT_HEADER, NULL, 0},
     {"mqtt_stats", "Use MQTT instead of CSV for stats.", SIPP_OPTION_BOOL, &mqtt_stats, 1},
     {"mqtt_stats_topic", "Set the MQTT topic for publishing stats. Default is '/sipp/stats'", SIPP_OPTION_STRING, &mqtt_stats_topic, 1},
     {"mqtt_rttstats_topic", "Set the MQTT topic for publishing rtt stats. Default is '/sipp/rttstats'", SIPP_OPTION_STRING, &mqtt_rttstats_topic, 1},
@@ -475,7 +476,7 @@ void timeout_alarm(int /*param*/)
     if (timeout_error) {
         ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)clock_tick / 1000LL));
     }
-    quitting = 1;
+    quitting = 21;
     timeout_exit = true;
 }
 
@@ -535,8 +536,9 @@ static void traffic_thread()
                 /* Force exit: abort all calls */
                 abort_all_tasks();
             }
+
             /* Quitting and no more opened calls, close all */
-            if (!main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall)) {
+            if (!main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall) || quitting > 11) {
                 /* We can have calls that do not count towards our open-call count (e.g., dead calls). */
                 abort_all_tasks();
 #ifdef RTP_STREAM
