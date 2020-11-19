@@ -312,7 +312,7 @@ static bool process_command(char* command)
     }
 
     if (!rest) {
-        WARNING("The %s command requires at least one argument", command);
+        WARNING("The %s command requires at least one argument\n", command);
     } else if (!strcmp(command, "set")) {
         process_set(rest);
     } else if (!strcmp(command, "trace")) {
@@ -550,6 +550,8 @@ void mqtt_cb_msg(struct mosquitto *mosq, void *userdata,
     bufrcv = (const char*) msg->payload;
     ret = strlen(bufrcv);
 
+    WARNING("MQTT received payload '%s'\n", bufrcv);
+
     if (bufrcv[0] == 'c') {
         /* No 'c', but we need one for '\0'. */
         char *command = (char *)malloc(ret);
@@ -592,9 +594,12 @@ void setup_mqtt_socket()
     mosquitto_disconnect_callback_set(mqtt_handler, mqtt_cb_disconnect);
 
     if (mqtt_ca_file) {
+        WARNING("MQTT connect to %s:%d\n", mqtt_host, mqtt_port);
         mosquitto_tls_set(mqtt_handler, mqtt_ca_file, NULL, NULL, NULL, NULL);
     }
-    ret = mosquitto_connect(mqtt_handler, mqtt_host, mqtt_port, keepalive_seconds);
+    do {
+        ret = mosquitto_connect(mqtt_handler, mqtt_host, mqtt_port, keepalive_seconds);
+    } while (ret == MOSQ_ERR_ERRNO && errno == EINTR);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERROR_NO("Could not connect to MQTT broker '%s:%d': %s\n",
                 mqtt_host, mqtt_port, mosquitto_strerror(ret));
@@ -3163,7 +3168,6 @@ void SIPpSocket::pollset_process(int wait)
             }
         }
 #else
-
         if (events) {
             rs--;
         }
@@ -3171,16 +3175,17 @@ void SIPpSocket::pollset_process(int wait)
 #endif
 
 #ifdef USE_MQTT
-        if (sock == mqtt_socket && mosquitto_want_write(mqtt_handler)) {
+        if (sock == mqtt_socket) {
+            if (mosquitto_want_write(mqtt_handler)) {
 #ifdef HAVE_EPOLL
-            epollfiles[poll_idx].events |= EPOLLOUT;
-            epoll_ctl(epollfd, EPOLL_CTL_MOD, sock->ss_fd, &epollfiles[poll_idx]);
+                epollfiles[poll_idx].events |= EPOLLOUT;
+                epoll_ctl(epollfd, EPOLL_CTL_MOD, sock->ss_fd, &epollfiles[poll_idx]);
 #else
-            pollfiles[poll_idx].events |= POLLOUT;
+                pollfiles[poll_idx].events |= POLLOUT;
 #endif
+            }
         }
 #endif
-
 
     }
     // agranig: end of for-loop iterating over pollfds
