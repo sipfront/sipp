@@ -56,7 +56,6 @@ if [ "$secret" = "null" ]; then
 fi
 
 SM_HEPIC_KEY=$(echo $secret | jq -r '.licensekey')
-echo ">>> got HEPIC key '$SM_HEPIC_KEY'"
 
 ########################################################################
 # system specific checks
@@ -297,7 +296,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
              SFC_PERF_TEST_DURATION SFC_PERF_MAX_TOTAL_CALLS \
              SFC_PERF_CALL_DURATION SFC_PERF_CAPS SFC_PERF_CC \
              SFC_TRIGGER_READY SFC_TRIGGER_QUIT \
-             SFC_PERF_REGEXPIRE SFC_STATS_ROLE; do
+             SFC_PERF_REGEXPIRE; do
 
         var="S_${STATE_INDEX}_A_${i}_${v}";
         declare "${v}"="${!var}";
