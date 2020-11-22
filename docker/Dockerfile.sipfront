@@ -9,13 +9,20 @@ RUN cd /src && \
     rm -f CMakeCache.txt && \
     cmake . -DUSE_PCAP=1 -DUSE_GSL=1 -DUSE_MQTT=1 -DUSE_SSL=1 && \
     make
-RUN mv /src/sipp /bin/sipp
-RUN mv /src/sipfront-run.sh /bin/sipfront-run
+RUN mv /src/sipp /usr/bin/sipp
+RUN mv /src/sipfront-run.sh /usr/bin/sipfront-run
 
 FROM debian:stable AS run-stage
+ADD . /src
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get -y install \
     libncurses6 libpcap0.8 libgsl23 libmosquitto1 libssl1.1 \
-    uuid-runtime curl awscli jq gdb iptables mosquitto-clients
-COPY --from=build-stage /bin/sipp /bin/sipp
-COPY --from=build-stage /bin/sipfront-run /bin/sipfront-run
+    uuid-runtime curl awscli jq gdb iptables mosquitto-clients 
+RUN curl -s https://a9b36f98258eaaf27ee1937c25aa1288116c782673335d9e@packagecloud.io/install/repositories/qxip/rtpagent/script.deb.sh | bash
+RUN apt-get -y install \
+    rtpagent rtpagent-extra-modules-license-turbo libfl2 && \
+    mkdir -p /etc/rtpagent && \
+    cp /src/etc/socket_pcap.xml /src/etc/transport_hep.xml /etc/rtpagent/
+COPY --from=build-stage /usr/bin/sipp /usr/bin/sipp
+COPY --from=build-stage /usr/bin/sipfront-run /usr/bin/sipfront-run
 RUN mkdir /etc/sipfront-scenarios /etc/sipfront-credentials

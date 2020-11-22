@@ -1,4 +1,5 @@
 agranig-docker-helper.sh
+playground/export*
 *.o
 *~
 .*.sw*

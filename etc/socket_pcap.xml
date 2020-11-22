@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<document type="captagent_module/xml">
+  <module name="socket_pcap" description="HEP Socket" serial="2019010402">
+	<profile name="socketspcap_sip" description="HEP Socket" enable="true" serial="2019010402">
+	  <settings>
+		<param name="dev" value="any"/>
+		<param name="promisc" value="true"/>
+		<param name="reasm" value="true"/>
+		<param name="tcpdefrag" value="true"/>
+		<param name="ipv4fragments" value="true"/>
+        <param name="ipv6fragments" value="true"/>
+		<param name="websocket-detection" value="false"/>
+	    <param name="vxlan-detection" value="false"/>
+	    <param name="vni-extraction" value="false"/>
+		<!-- <param name="erspan" value="true"/> -->
+		<!-- <param name="capture-filter" value="gre_sip"/> -->
+		<param name="capture-plan" value="sip_capture_plan.cfg"/>
+		<param name="filter">
+		  <value>portrange 5060-5061</value>
+		</param>
+		<!-- you can set file filter and not inline filter -->
+		<!--<param name="file-filter" value="/usr/local/rtpagent/etc/filter.txt"/>-->		
+	  </settings>
+	</profile>
+	<profile name="socketspcap_rtp" description="RTP Socket" enable="false" serial="2019010402">
+	  <settings>
+		<param name="dev" value="any"/>
+		<param name="promisc" value="true"/>
+		<param name="reasm" value="false"/>
+		<!-- size in MB -->
+		<param name="ring-buffer" value="20"/>
+		<!-- for rtp && rtcp < 250 -->
+		<param name="snap-len" value="256"/>
+		<!-- <param name="erspan" value="true"/> -->
+		<param name="capture-filter" value="rtp"/>
+		<param name="capture-plan" value="rtp_capture_plan.cfg"/>
+		<param name="filter">
+		  <value>portrange 7000-50000</value>
+		</param>
+	  </settings>
+	</profile>
+  </module>
+</document>

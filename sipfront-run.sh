@@ -49,6 +49,15 @@ SM_MQTT_HOST=$(echo $secret | jq -r '.host')
 SM_MQTT_PORT=$(echo $secret | jq -r '.port')
 SM_MQTT_TOPICBASE=$(echo $secret | jq -r '.topicbase')
 
+secret=$(aws secretsmanager get-secret-value --secret-id "hepic-rtpagent-credentials" --region eu-central-1 | jq -r '.SecretString')
+if [ "$secret" = "null" ]; then
+    echo "Failed to fetch Hepic credentials from AWS SecretsManager, missing SecretString attribute, aborting"
+    exit 1
+fi
+
+SM_HEPIC_KEY=$(echo $secret | jq -r '.licensekey')
+echo ">>> got HEPIC key '$SM_HEPIC_KEY'"
+
 ########################################################################
 # system specific checks
 ########################################################################
@@ -264,10 +273,22 @@ case "$TRANSPORT_PROTO" in
 esac
 
 ########################################################################
+# rtpagent registration and launching
+########################################################################
+
+mv /etc/rtpagent/*.xml /usr/local/rtpagent/etc/
+/usr/local/rtpagent/bin/rtpagent -A "$SM_HEPIC_KEY"
+/usr/local/rtpagent/bin/rtpagent -l -d -x 5
+
+
+########################################################################
 # action specific checks
 ########################################################################
 
 # env vars are in format A_${action_idx}_SFC_VARNAME, e.g. A_0_CALL_RATE
+
+
+
 
 for i in $( seq 0 $((ACTIONS-1)) ); do
 
@@ -516,6 +537,17 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     fi
 
 done
+
+########################################################################
+# rtpagent de-registration and stopping
+########################################################################
+
+killall rtpagent
+/usr/local/rtpagent/bin/rtpagent -U
+
+########################################################################
+# send final stats
+########################################################################
 
 # publish last exit status
 if [ $sipp_ret -eq 0 ]; then
