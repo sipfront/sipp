@@ -179,15 +179,16 @@ function publish_mqtt() {
 
 publish_mqtt "status" "$STATS_ROLE" "state_launching"
 
-publish_mqtt "status" "$STATS_ROLE" "state_preparing_config"
-
 ########################################################################
 # scenario specific checks
 ########################################################################
 
+publish_mqtt "status" "$STATS_ROLE" "state_preparing_config"
+
+
 if [ -z "$SFC_TARGET_HOST" ]; then
     echo "Missing env SFC_TARGET_HOST, aborting"
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "session_failed"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -195,7 +196,7 @@ TARGET_HOST="$SFC_TARGET_HOST"
 
 if [ -z "$SFC_TARGET_PORT" ]; then
     echo "Missing env SFC_TARGET_PORT, aborting"
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "session_failed"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -203,7 +204,7 @@ TARGET_PORT="$SFC_TARGET_PORT"
 
 if [ -z "$SFC_TARGET_PROTO" ]; then
     echo "Missing env SFC_TARGET_PROTO, aborting"
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "session_failed"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -212,7 +213,7 @@ TARGET_PROTO=$(echo "$SFC_TARGET_PROTO" | tr '[:upper:]' '[:lower:]')
 
 if [ -z "$SFC_SIPFRONT_API" ]; then
     echo "Missing env SFC_SIPFRONT_API, aborting"
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "session_failed"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -220,7 +221,7 @@ SIPFRONT_API="$SFC_SIPFRONT_API"
 
 if [ -z "$SFC_SIPFRONT_API_TOKEN" ]; then
     echo "Missing env SFC_SIPFRONT_API_TOKEN, aborting"
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "session_failed"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -230,13 +231,13 @@ var="S_${STATE_INDEX}_SFC_ACTIONS"
 SFC_ACTIONS=${!var}
 if [ -z "$SFC_ACTIONS" ]; then
     echo "Missing env $var, aborting"
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "session_failed"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
 if [ "$SFC_ACTIONS" -lt "1" ]; then
     echo "Invalid env $var, must be >= 1"
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
+    publish_mqtt "status" "$STATS_ROLE" "session_failed"
     send_trigger "$AWS_TASK_TOKEN" "failed"
     exit 1
 fi
@@ -296,8 +297,6 @@ ACTION_HAS_ERROR=0
 
 for i in $( seq 0 $((ACTIONS-1)) ); do
 
-    publish_mqtt "status" "$STATS_ROLE" "action_launching"
-
     for v in SFC_TRIGGER_STEP SFC_SCENARIO SFC_STATS_ROLE \
              SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE \
              SFC_PERF_TEST_DURATION SFC_PERF_MAX_TOTAL_CALLS \
@@ -310,19 +309,22 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         echo "$var = ${v} = ${!var}"
     done
 
+    STATS_ROLE="caller"
+    if ! [ -z "$SFC_STATS_ROLE" ]; then
+        STATS_ROLE="$SFC_STATS_ROLE"
+    fi
+
+    publish_mqtt "status" "$STATS_ROLE" "action_launching"
+
     if [ -z "$SFC_SCENARIO" ]; then
         echo "Missing env S_${STATE_INDEX}_A_${i}_SFC_SCENARIO, aborting"
-        publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_env"
+        publish_mqtt "status" "$STATS_ROLE" "session_failed"
         send_trigger "$AWS_TASK_TOKEN" "failed"
         exit 1
     fi
     SCENARIO="$SFC_SCENARIO"
     SCENARIO_FILE="/etc/sipfront-scenarios/${SCENARIO}.xml"
 
-    STATS_ROLE="caller"
-    if ! [ -z "$SFC_STATS_ROLE" ]; then
-        STATS_ROLE="$SFC_STATS_ROLE"
-    fi
 
 
     publish_mqtt "status" "$STATS_ROLE" "action_fetching_auxdata"
@@ -340,7 +342,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
         if [ $? -ne 0 ]; then
             echo "Failed to fetch caller credentials from api, aborting..."
-            publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_creds"
+            publish_mqtt "status" "$STATS_ROLE" "session_failed"
             send_trigger "$AWS_TASK_TOKEN" "failed"
             exit 1
         fi
@@ -353,7 +355,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
         if [ $? -ne 0 ]; then
             echo "Failed to fetch callee credentials from api, aborting..."
-            publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_creds"
+            publish_mqtt "status" "$STATS_ROLE" "session_failed"
             send_trigger "$AWS_TASK_TOKEN" "failed"
             exit 1
         fi
@@ -457,7 +459,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     if [ "$SFC_TRIGGER_READY" -eq "1" ]; then
         echo "Triggering ready state so consumers can start drawing"
         send_trigger "$AWS_TASK_TOKEN" "$trigger_state" "$TASK_ARN" "$((STATE_INDEX+1))"
-        publish_mqtt "status" "$STATS_ROLE" "infra_action_ready"
+        publish_mqtt "status" "$STATS_ROLE" "action_metrics_ready"
     fi
 
     echo sipp \
