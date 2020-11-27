@@ -177,7 +177,9 @@ function publish_mqtt() {
         -u "$SM_MQTT_USER" -P "$SM_MQTT_PASS";
 }
 
-publish_mqtt "status" "$STATS_ROLE" "infra_container_started"
+publish_mqtt "status" "$STATS_ROLE" "state_launching"
+
+publish_mqtt "status" "$STATS_ROLE" "state_preparing_config"
 
 ########################################################################
 # scenario specific checks
@@ -288,14 +290,19 @@ mv /etc/rtpagent/*.xml /usr/local/rtpagent/etc/
 
 
 
+publish_mqtt "status" "$STATS_ROLE" "state_dispatching_actions"
+
+ACTION_HAS_ERROR=0
 
 for i in $( seq 0 $((ACTIONS-1)) ); do
+
+    publish_mqtt "status" "$STATS_ROLE" "action_launching"
 
     for v in SFC_TRIGGER_STEP SFC_SCENARIO SFC_STATS_ROLE \
              SFC_CREDENTIALS_CALLER SFC_CREDENTIALS_CALLEE \
              SFC_PERF_TEST_DURATION SFC_PERF_MAX_TOTAL_CALLS \
              SFC_PERF_CALL_DURATION SFC_PERF_CAPS SFC_PERF_CC \
-             SFC_TRIGGER_READY SFC_TRIGGER_QUIT \
+             SFC_TRIGGER_READY SFC_TRIGGER_QUIT SFC_TRIGGER_FINISH \
              SFC_PERF_REGEXPIRE; do
 
         var="S_${STATE_INDEX}_A_${i}_${v}";
@@ -316,6 +323,9 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     if ! [ -z "$SFC_STATS_ROLE" ]; then
         STATS_ROLE="$SFC_STATS_ROLE"
     fi
+
+
+    publish_mqtt "status" "$STATS_ROLE" "action_fetching_auxdata"
 
     CREDENTIALS_CALLER="$SFC_CREDENTIALS_CALLER"
     CREDENTIALS_CALLEE="$SFC_CREDENTIALS_CALLEE"
@@ -348,6 +358,8 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
             exit 1
         fi
     fi
+
+    publish_mqtt "status" "$STATS_ROLE" "action_preparing_config"
 
     caller_credentials=0
     callee_credentials=0
@@ -439,7 +451,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     echo "Starting sipp"
     ulimit -c unlimited
 
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_start_sipp"
+    publish_mqtt "status" "$STATS_ROLE" "action_launching_command"
 
     echo "Checkin for ready-trigger"
     if [ "$SFC_TRIGGER_READY" -eq "1" ]; then
@@ -500,24 +512,23 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         gdb -x $CF /bin/sipp /core.*
     fi
 
+    publish_mqtt "status" "$STATS_ROLE" "action_finishing"
+
     if [ $sipp_ret -eq 0 ]; then
-        # all calls successful
-        publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
+        echo "All calls successful"
         trigger_state="passed"
     elif [ $sipp_ret -eq 1 ]; then
-        # at least one call failed
-        publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
+        echo "At least one call failed"
         trigger_state="passed"
     elif [ $sipp_ret -eq 97 ]; then
-        # exit on internal command
-        publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
+        echo "Exiting on internal command"
         trigger_state="passed"
     elif [ $sipp_ret -eq 99 ]; then
-        # normal exit without calls
-        publish_mqtt "status" "$STATS_ROLE" "infra_action_normal_done"
+        echo "Exiting without doing any calls"
         trigger_state="passed"
     else
-        publish_mqtt "status" "$STATS_ROLE" "infra_action_failed_done"
+        echo "Exiting with error"
+        ACTION_HAS_ERROR=1
         trigger_state="failed"
     fi
     rm -f /*errors.log /core*
@@ -535,6 +546,14 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         publish_mqtt "ctrl" "callee" "Q" "/sipp/ctrl"
     fi
 
+    publish_mqtt "status" "$STATS_ROLE" "action_finishing"
+
+    echo "Checkin for finish-trigger"
+    if [ "$SFC_TRIGGER_FINISH" -eq "1" ]; then
+        echo "Triggering overall finish state of session"
+        publish_mqtt "status" "$STATS_ROLE" "session_finished"
+    fi
+
 done
 
 ########################################################################
@@ -548,13 +567,11 @@ killall rtpagent
 # send final stats
 ########################################################################
 
-# publish last exit status
-if [ $sipp_ret -eq 0 ]; then
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_normal_done"
-elif [ $sipp_ret -eq 1 ]; then
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_normal_done"
-else
-    publish_mqtt "status" "$STATS_ROLE" "infra_container_failed_done"
+publish_mqtt "status" "$STATS_ROLE" "state_finishing"
+
+echo "Checking for action errors"
+if [ "$ACTION_HAS_ERROR" -eq "1" ]; then
+    publish_mqtt "status" "$STATS_ROLE" "session_failed"
 fi
 
 echo "Task finished"
