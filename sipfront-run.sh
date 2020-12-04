@@ -339,7 +339,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     if [ "$CREDENTIALS_CALLER" = "1" ] && ! [ -f "$CREDENTIALS_CALLER_FILE" ]; then
         URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials/caller"
         echo "Fetching caller credentials from '$URL' to '$CREDENTIALS_CALLER_FILE'"
-        curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
+        curl -f -H 'Accept: text/sipp' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLER_FILE"
         if [ $? -ne 0 ]; then
             echo "Failed to fetch caller credentials from api, aborting..."
             publish_mqtt "status" "$STATS_ROLE" "session_failed"
@@ -352,7 +352,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
         URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials/callee"
 
         echo "Fetching callee credentials from '$URL' to '$CREDENTIALS_CALLEE_FILE'"
-        curl -f -H 'Accept: text/csv' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
+        curl -f -H 'Accept: text/sipp' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$CREDENTIALS_CALLEE_FILE"
         if [ $? -ne 0 ]; then
             echo "Failed to fetch callee credentials from api, aborting..."
             publish_mqtt "status" "$STATS_ROLE" "session_failed"
