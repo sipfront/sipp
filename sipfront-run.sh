@@ -335,6 +335,12 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     URL="${SIPFRONT_API}/scenarios/?name=${SCENARIO}"
     echo "Fetching scenario '$URL' to '$SCENARIO_FILE'"
     curl -f -H 'Accept: application/xml' -H "Authorization: Bearer $SIPFRONT_API_TOKEN" "$URL" -o "$SCENARIO_FILE"
+     if [ $? -ne 0 ]; then
+        echo "Failed to fetch scenario file from api, aborting..."
+        publish_mqtt "status" "$STATS_ROLE" "session_failed"
+        send_trigger "$AWS_TASK_TOKEN" "failed"
+        exit 1
+    fi
 
     if [ "$CREDENTIALS_CALLER" = "1" ] && ! [ -f "$CREDENTIALS_CALLER_FILE" ]; then
         URL="${SIPFRONT_API}/internal/sessions/${SESSION_UUID}/credentials/caller"
