@@ -302,6 +302,8 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
              SFC_PERF_TEST_DURATION SFC_PERF_MAX_TOTAL_CALLS \
              SFC_PERF_CALL_DURATION SFC_PERF_CAPS SFC_PERF_CC \
              SFC_TRIGGER_READY SFC_TRIGGER_QUIT SFC_TRIGGER_FINISH \
+             SFC_TRIGGER_BILLING_START SFC_TRIGGER_BILLING_STOP \
+             SFC_BILLING_PLAN \
              SFC_PERF_REGEXPIRE; do
 
         var="S_${STATE_INDEX}_A_${i}_${v}";
@@ -368,6 +370,13 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     fi
 
     publish_mqtt "status" "$STATS_ROLE" "action_preparing_config"
+
+    if [ "$SFC_TRIGGER_BILLING_STOP" = "1" ] && [ -z "$SFC_BILLING_PLAN" ]; then
+        echo "Missing billing plan for active stop trigger, aborting..."
+        publish_mqtt "status" "$STATS_ROLE" "session_failed"
+        send_trigger "$AWS_TASK_TOKEN" "failed"
+        exit 1
+    fi    
 
     caller_credentials=0
     callee_credentials=0
@@ -461,11 +470,18 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
 
     publish_mqtt "status" "$STATS_ROLE" "action_launching_command"
 
-    echo "Checkin for ready-trigger"
+    echo "Checking for ready-trigger"
     if [ "$SFC_TRIGGER_READY" -eq "1" ]; then
         echo "Triggering ready state so consumers can start drawing"
         send_trigger "$AWS_TASK_TOKEN" "$trigger_state" "$TASK_ARN" "$((STATE_INDEX+1))"
         publish_mqtt "status" "$STATS_ROLE" "action_metrics_ready"
+    fi
+
+    echo "Checking for billing start task token"
+    if [ "$SFC_TRIGGER_BILLING_START" -eq "1" ]; then
+        Tms=$(date +%s%N | cut -b1-13);
+        echo "Triggering billing start event, Tms is $Tms"
+        publish_mqtt "start" "$STATS_ROLE" "{\"plan\":\"$SFC_BILLING_PLAN\",\"time\":$Tms}" "/sipp/billing"
     fi
 
     echo sipp \
@@ -512,6 +528,13 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
 
     echo "Sipp finished, exit code is '$sipp_ret'"
 
+    echo "Checking for billing stop task token"
+    if [ "$SFC_TRIGGER_BILLING_STOP" -eq "1" ]; then
+        Tms=$(date +%s%N | cut -b1-13);
+        echo "Triggering billing stop event, Tms is $Tms"
+        publish_mqtt "stop" "$STATS_ROLE" "{\"plan\":\"$SFC_BILLING_PLAN\",\"time\":$Tms}" "/sipp/billing"
+    fi
+
     cat /*errors.log
     if ls /core.* 1>/dev/null 2>/dev/null; then
         CF="/gdb.txt"
@@ -541,13 +564,13 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
     fi
     rm -f /*errors.log /core*
 
-    echo "Checkin for AWS task token"
+    echo "Checking for AWS task token"
     if [ "$SFC_TRIGGER_STEP" -eq "1" ]; then
         echo "Triggering AWS step function task change"
         send_trigger "$AWS_TASK_TOKEN" "$trigger_state" "$TASK_ARN" "$((STATE_INDEX+1))"
     fi
 
-    echo "Checkin for quit-trigger"
+    echo "Checking for quit-trigger"
     if [ "$SFC_TRIGGER_QUIT" -eq "1" ]; then
         echo "Triggering quit state to shutdown all other sipp callee instances"
         
@@ -556,7 +579,7 @@ for i in $( seq 0 $((ACTIONS-1)) ); do
 
     publish_mqtt "status" "$STATS_ROLE" "action_finishing"
 
-    echo "Checkin for finish-trigger"
+    echo "Checking for finish-trigger"
     if [ "$SFC_TRIGGER_FINISH" -eq "1" ]; then
         echo "Triggering overall finish state of session"
         publish_mqtt "status" "$STATS_ROLE" "session_finished"
