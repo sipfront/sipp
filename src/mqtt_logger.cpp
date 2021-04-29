@@ -243,7 +243,7 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
             2, false);
 }
 
-void print_message_mqtt(struct timeval *currentTime, const char* direction, const char *transport, const char *sock_type, ssize_t msg_size, const char *msg) {
+void print_message_mqtt(struct timeval *currentTime, const char* cid, const char* direction, const char *transport, const char *sock_type, ssize_t msg_size, const char *msg) {
     std::stringstream jsonData;
     std::string strbuf = do_replace(std::string(msg), "\r?\n", "\\r\\n");
     strbuf = do_replace(strbuf, "\"", "\\\"");
@@ -251,6 +251,7 @@ void print_message_mqtt(struct timeval *currentTime, const char* direction, cons
     jsonData
         << "{"
         << JQC(CurrentTime, CStat::formatTime(currentTime, true))
+        << JQC(CallId, cid)
         << JQC(Direction, direction)
         << JQC(Transport, transport)
         << JQC(Type, sock_type)
