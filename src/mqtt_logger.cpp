@@ -215,9 +215,8 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
 		<< "{"
 		<< JQC(CurrentTime, CStat::formatTime(&currentTime, true))
         << JQC(Content, buf)
-        << JQV(Fatal, fatal)
-        << JQV(Total, total_errors)
-	    << JQV(Errno, error);
+        << JQC(Fatal, fatal)
+        << JQC(Total, total_errors);
     
     if (use_errno) {
 	    jsonData << JQC(ErrnoString, strerror(error));
@@ -225,10 +224,14 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
 	    jsonData << JQC(ErrnoString, "");
     }
 
+    // last one is without comma
+	jsonData
+        << JQV(Errno, error);
+
     std::string jsonDataStr = jsonData.str();
     jsonDataStr += "}\n";
 
-    int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_codestats_topic,
+    int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_error_topic,
             jsonDataStr.length(), jsonDataStr.c_str(),
             2, false);
     if (ret != MOSQ_ERR_SUCCESS) {
