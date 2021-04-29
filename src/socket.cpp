@@ -546,14 +546,11 @@ void mqtt_cb_msg(struct mosquitto *mosq, void *userdata,
     const char* bufrcv;
 
     if (!msg->payload) {
-        WARNING("MQTT received null payload on ctrl topic, ignoring...\n");
         return;
     }
 
     bufrcv = (const char*) msg->payload;
     ret = strlen(bufrcv);
-
-    WARNING("MQTT received payload '%s'\n", bufrcv);
 
     if (bufrcv[0] == 'c') {
         /* No 'c', but we need one for '\0'. */
@@ -1097,7 +1094,10 @@ void SIPpSocket::invalidate()
 #ifdef HAVE_EPOLL
         int rc = epoll_ctl(epollfd, EPOLL_CTL_DEL, ss_fd, NULL);
         if (rc == -1) {
+#ifndef USE_MQTT            
+            // agranig: don't send this to mqtt for now, figure out which fs is causing this regularly on Fargate
             WARNING_NO("Failed to delete FD from epoll");
+#endif
         }
 #endif
     }
