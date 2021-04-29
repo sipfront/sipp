@@ -440,7 +440,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     CStat::globalStat(fatal ? CStat::E_FATAL_ERRORS : CStat::E_WARNING);
 
 #ifdef USE_MQTT
-    if (mqtt_stats) {
+    if (mqtt_stats && print_all_responses) {
         print_errors_mqtt(fatal, use_errno, error, fmt, ap);
     } else {
 #endif    
