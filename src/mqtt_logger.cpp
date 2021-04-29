@@ -231,11 +231,8 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
     std::string jsonDataStr = jsonData.str();
     jsonDataStr += "}\n";
 
-    int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_error_topic,
+    mosquitto_publish(mqtt_handler, NULL, mqtt_error_topic,
             jsonDataStr.length(), jsonDataStr.c_str(),
             2, false);
-    if (ret != MOSQ_ERR_SUCCESS) {
-        WARNING("MQTT: failed to publish counts: %s\n", mosquitto_strerror(ret));
-    }
 }
 

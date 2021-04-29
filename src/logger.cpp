@@ -437,13 +437,13 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     static unsigned long long count = 0;
     struct timeval currentTime;
 
+    CStat::globalStat(fatal ? CStat::E_FATAL_ERRORS : CStat::E_WARNING);
+
 #ifdef USE_MQTT
     if (mqtt_stats) {
         print_errors_mqtt(fatal, use_errno, error, fmt, ap);
-    }
+    } else {
 #endif    
-
-    CStat::globalStat(fatal ? CStat::E_FATAL_ERRORS : CStat::E_WARNING);
 
     GET_TIME (&currentTime);
 
@@ -493,6 +493,10 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
         fprintf(stderr, "%s\n", screen_last_error);
         fflush(stderr);
     }
+
+#ifdef USE_MQTT
+    }
+#endif
 
     if (fatal) {
         if (error == EADDRINUSE) {
