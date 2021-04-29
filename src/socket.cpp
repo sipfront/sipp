@@ -1283,6 +1283,8 @@ void process_message(SIPpSocket *socket, char *msg, ssize_t msg_size, struct soc
                   TRANSPORT_TO_STRING(socket->ss_transport),
                   socket->ss_control ? "control " : "",
                   msg_size, msg);
+        TRACE_MSG_PARTS(&currentTime, "recv", TRANSPORT_TO_STRING(socket->ss_transport),
+                socket->ss_control ? "control " : "", msg_size, msg);
     }
 
     if (!listener_ptr) {
@@ -2382,6 +2384,8 @@ int SIPpSocket::write(const char *buffer, ssize_t len, int flags, struct sockadd
                       TRANSPORT_TO_STRING(ss_transport),
                       ss_control ? "control " : "",
                       len, (int)len, buffer);
+            TRACE_MSG_PARTS(&currentTime, "send", TRANSPORT_TO_STRING(ss_transport),
+                    ss_control ? "control " : "", len, buffer);
         }
 
         if (useShortMessagef == 1) {

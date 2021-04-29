@@ -370,6 +370,16 @@ int TRACE_MSG(const char* fmt, ...)
     return ret;
 }
 
+int TRACE_MSG_PARTS(struct timeval *currentTime, const char* direction, const char *transport, const char *sock_type, ssize_t msg_size, const char *msg)
+{
+    int ret = 0;
+#ifdef USE_MQTT
+    print_message_mqtt(currentTime, direction, transport, sock_type, msg_size, msg);
+#endif
+    return ret;
+}
+
+
 int TRACE_SHORTMSG(const char* fmt, ...)
 {
     int ret;

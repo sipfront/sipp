@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include <sstream>
+#include <regex>
 
 #include "mqtt_logger.hpp"
 
@@ -30,6 +31,10 @@
 #define JQC(k, v) JQV(k, v) << ","
 
 static unsigned long total_errors = 0;
+
+std::string do_replace(std::string const &in, std::string const &from, std::string const &to) {
+    return std::regex_replace(in, std::regex(from), to);
+}
 
 void print_count_mqtt()
 {
@@ -210,11 +215,13 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
     GET_TIME(&currentTime);
 
     vsnprintf(buf, sizeof(buf), fmt, ap);
+    std::string strbuf = do_replace(std::string(buf), "\r?\n", "\\r\\n");
+    strbuf = do_replace(strbuf, "\"", "\\\"");
 
 	jsonData
 		<< "{"
 		<< JQC(CurrentTime, CStat::formatTime(&currentTime, true))
-        << JQC(Content, buf)
+        << JQC(Content, strbuf)
         << JQC(Fatal, fatal)
         << JQC(Total, total_errors);
     
@@ -236,3 +243,30 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
             2, false);
 }
 
+void print_message_mqtt(struct timeval *currentTime, const char* direction, const char *transport, const char *sock_type, ssize_t msg_size, const char *msg) {
+    std::stringstream jsonData;
+    std::string strbuf = do_replace(std::string(msg), "\r?\n", "\\r\\n");
+    strbuf = do_replace(strbuf, "\"", "\\\"");
+
+    jsonData
+        << "{"
+        << JQC(CurrentTime, CStat::formatTime(currentTime, true))
+        << JQC(Direction, direction)
+        << JQC(Transport, transport)
+        << JQC(Type, sock_type)
+        << JQC(Message, strbuf);
+
+    // last one is without comma
+    jsonData
+        << JQV(Size, msg_size);
+
+    std::string jsonDataStr = jsonData.str();
+    jsonDataStr += "}\n";
+
+    int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_message_topic,
+            jsonDataStr.length(), jsonDataStr.c_str(),
+            2, false);
+    if (ret != MOSQ_ERR_SUCCESS) {
+        WARNING("MQTT: failed to publish message: %s\n", mosquitto_strerror(ret));
+    }
+}

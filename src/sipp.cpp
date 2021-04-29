@@ -401,6 +401,7 @@ struct sipp_option options_table[] = {
     {"mqtt_countstats_topic", "Set the MQTT topic for publishing count stats. Default is '/sipp/countstats'", SIPP_OPTION_STRING, &mqtt_countstats_topic, 1},
     {"mqtt_codestats_topic", "Set the MQTT topic for publishing SIP code stats. Default is '/sipp/codestats'", SIPP_OPTION_STRING, &mqtt_codestats_topic, 1},
     {"mqtt_error_topic", "Set the MQTT topic for publishing error messages. Default is '/sipp/errors'", SIPP_OPTION_STRING, &mqtt_error_topic, 1},
+    {"mqtt_message_topic", "Set the MQTT topic for publishing SIP messages. Default is '/sipp/messages'", SIPP_OPTION_STRING, &mqtt_message_topic, 1},
     {"mqtt_ctrl", "Use MQTT instead of UDP for remote control.", SIPP_OPTION_BOOL, &mqtt_ctrl, 1},
     {"mqtt_ctrl_topic", "Set the MQTT topic for subscribing to control commands. Default is '/sipp/ctrl'", SIPP_OPTION_STRING, &mqtt_ctrl_topic, 1},
     {"mqtt_host", "Set the hostname of the MQTT broker. Default is 'localhost'", SIPP_OPTION_STRING, &mqtt_host, 1},
