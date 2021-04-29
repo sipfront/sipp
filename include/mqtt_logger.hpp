@@ -24,5 +24,6 @@
 
 void print_count_mqtt();
 void print_error_codes_mqtt();
+void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va_list ap);
 
 #endif /* __SIPP_MQTT_LOGGER_H__ */

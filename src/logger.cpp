@@ -45,7 +45,11 @@
 
 #include "logger.hpp"
 
-unsigned long total_errors = 0;
+#ifdef USE_MQTT
+#include "mqtt_logger.hpp"
+#endif
+
+static unsigned long total_errors = 0;
 
 void log_off(struct logfile_info* lfi)
 {
@@ -432,6 +436,12 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
 {
     static unsigned long long count = 0;
     struct timeval currentTime;
+
+#ifdef USE_MQTT
+    if (mqtt_stats) {
+        print_errors_mqtt(fatal, use_errno, error, fmt, ap);
+    }
+#endif    
 
     CStat::globalStat(fatal ? CStat::E_FATAL_ERRORS : CStat::E_WARNING);
 

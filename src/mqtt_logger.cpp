@@ -29,6 +29,8 @@
 #define JQV(k, v) JQ(k) << (v) << "\""
 #define JQC(k, v) JQV(k, v) << ","
 
+static unsigned long total_errors = 0;
+
 void print_count_mqtt()
 {
     std::stringstream jsonData;
@@ -180,6 +182,51 @@ void print_error_codes_mqtt()
     if (popComma)
         jsonDataStr.pop_back();
     jsonDataStr += "]}\n";
+
+    int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_codestats_topic,
+            jsonDataStr.length(), jsonDataStr.c_str(),
+            2, false);
+    if (ret != MOSQ_ERR_SUCCESS) {
+        WARNING("MQTT: failed to publish counts: %s\n", mosquitto_strerror(ret));
+    }
+}
+
+void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va_list ap)
+{
+    std::stringstream jsonData;
+    char buf[327680];
+
+    if (!mqtt_ready) {
+        return; 
+    }
+
+    if (mqtt_handler == NULL) {
+        return;
+    }
+
+    total_errors++;
+
+    struct timeval currentTime;
+    GET_TIME(&currentTime);
+
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+
+	jsonData
+		<< "{"
+		<< JQC(CurrentTime, CStat::formatTime(&currentTime, true))
+        << JQC(Content, buf)
+        << JQV(Fatal, fatal)
+        << JQV(Total, total_errors)
+	    << JQV(Errno, error);
+    
+    if (use_errno) {
+	    jsonData << JQC(ErrnoString, strerror(error));
+    } else {
+	    jsonData << JQC(ErrnoString, "");
+    }
+
+    std::string jsonDataStr = jsonData.str();
+    jsonDataStr += "}\n";
 
     int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_codestats_topic,
             jsonDataStr.length(), jsonDataStr.c_str(),
