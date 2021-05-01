@@ -26,6 +26,7 @@ option(USE_SCTP "Build with SCTP support" OFF)
 option(USE_PCAP "Build with PCAP playback support" OFF)
 option(USE_GSL "Build with improved statistical support" ON)
 option(USE_MQTT "Build with MQTT support" OFF)
+option(USE_CURL "Build with CURL support" OFF)
 
 file(GLOB all_SRCS
   "${PROJECT_SOURCE_DIR}/src/*.cpp"
@@ -94,6 +95,10 @@ endif(USE_SCTP)
 if(USE_MQTT)
   add_definitions("-DUSE_MQTT")
 endif(USE_MQTT)
+
+if(USE_CURL)
+    add_definitions("-DUSE_CURL")
+endif(USE_CURL)
 
 add_definitions("-DRTP_STREAM")
 
@@ -168,5 +173,10 @@ if(USE_MQTT)
   target_link_libraries(sipp mosquitto)
   target_link_libraries(sipp_unittest mosquitto)
 endif(USE_MQTT)
+
+if(USE_CURL)
+  target_link_libraries(sipp curl)
+  target_link_libraries(sipp_unittest curl)
+endif(USE_CURL)
 
 install(TARGETS sipp DESTINATION bin)

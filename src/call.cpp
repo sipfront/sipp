@@ -61,6 +61,11 @@
 #include "config.h"
 #include "version.h"
 
+#ifdef USE_CURL
+#include "curl.hpp"
+#endif
+
+
 template<typename Out>
 void split(const std::string &s, char delim, Out result) {
     std::stringstream ss;
@@ -3784,6 +3789,15 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
         } else if (currentAction->getActionType() == CAction::E_AT_RTP_STREAM_PLAY) {
             rtpstream_play(&rtpstream_callinfo, currentAction->getRTPStreamActInfo());
 #endif
+
+#ifdef USE_CURL
+        } else if (currentAction->getActionType() == CAction::E_AT_CURL_POST) {
+            // TODO: agranig: get SDP body, invoke curl post
+            // TODO: we've a var in the url, where is this replaced?
+
+            curl_post(sdp);
+#endif
+
         } else {
             ERROR("call::executeAction unknown action");
         }

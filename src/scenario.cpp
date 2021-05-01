@@ -1687,6 +1687,14 @@ void scenario::parseAction(CActions *actions)
             } else if ((cptr = xp_get_value("rtp_stream"))) {
                 ERROR("Scenario specifies a rtp_stream action, but this version of SIPp does not have RTP stream support");
 #endif
+#ifdef USE_CURL
+            } else if ((cptr = xp_get_value("curl_post"))) {
+                tmpAction->setCurlActInfo(cptr);
+                tmpAction->setActionType(CAction::E_AT_CURL_POST);
+#else
+            } else if ((cptr = xp_get_value("curl_post"))) {
+                ERROR("Scenario specifies a curl_post action, but this version of SIPp does not have cURL support");
+#endif
             } else {
                 ERROR("illegal <exec> in the scenario");
             }

@@ -166,6 +166,11 @@ void CAction::printInfo(char* buf, int len)
         snprintf(buf, len, "Type[%d] - rtp_stream resume", M_action);
 #endif
 
+#ifdef USE_CURL
+    } else if (M_action == E_AT_CURL_POST) {
+        snprintf(buf, len, "Type[%d] - curl_post", M_action);
+#endif        
+
     } else {
         snprintf(buf, len, "Type[%d] - unknown action type ... ", M_action);
     }
@@ -249,6 +254,10 @@ pcap_pkts  *   CAction::getPcapPkts()
 #endif
 #ifdef RTP_STREAM
 rtpstream_actinfo_t *CAction::getRTPStreamActInfo() { return (&M_rtpstream_actinfo); }
+#endif
+
+#ifdef USE_CURL
+curl_actinfo_t *CAction::getCurlActInfo() { return (&M_curl_actinfo); }
 #endif
 
 void CAction::setActionType   (CAction::T_ActionType   P_value)
@@ -578,6 +587,23 @@ void CAction::setRTPStreamActInfo(rtpstream_actinfo_t *P_value)
 }
 #endif
 
+#ifdef USE_CURL
+void CAction::setCurlActInfo(const char* P_value)
+{
+    if (strlen(P_value) >= sizeof(M_curl_actinfo.url)) {
+        ERROR("Parameter value '%s' for curl action is too long, maximum supported length is %zu",
+                P_value, sizeof(M_curl_actinfo.url) - 1);
+    }
+    snprintf(M_curl_actinfo.url, sizeof(M_curl_actinfo.url), "%s", P_value);
+}
+
+void CAction::setStirShakenActInfo(stirshaken_actinfo_t *P_value)
+{
+    memcpy(&M_curl_actinfo,P_value, sizeof(M_curl_actinfo));
+}
+
+#endif
+
 void CAction::setScenario(scenario *     P_scenario)
 {
     M_scenario = P_scenario;
@@ -619,6 +645,9 @@ void CAction::setAction(CAction P_action)
 #ifdef RTP_STREAM
     setRTPStreamActInfo(&(P_action.M_rtpstream_actinfo));
 #endif
+#ifdef USE_CURL
+    setCurlActInfo(&(P_action.M_curl_actinfo));
+#endif
 }
 
 CAction::CAction(scenario *scenario)
@@ -653,6 +682,10 @@ CAction::CAction(scenario *scenario)
 
 #ifdef RTP_STREAM
     memset(&M_rtpstream_actinfo, 0, sizeof(M_rtpstream_actinfo));
+#endif
+
+#ifdef USE_CURL
+    memset(&M_curl_actinfo, 0, sizeof(M_curl_actinfo));
 #endif
 
     M_scenario     = scenario;

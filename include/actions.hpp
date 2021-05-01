@@ -33,6 +33,9 @@ class CSample;
 #ifdef RTP_STREAM
 #include "rtpstream.hpp"
 #endif
+#ifdef USE_CURL
+#include "curl.hpp"
+#endif
 
 #define MAX_ACTION_MESSAGE 3
 
@@ -81,6 +84,9 @@ public:
         E_AT_RTP_STREAM_PLAY,
         E_AT_RTP_ECHO,
 #endif
+#ifdef USE_CURL
+        E_AT_CURL_POST,
+#endif        
         E_AT_NB_ACTION
     };
 
@@ -138,6 +144,9 @@ public:
 #ifdef RTP_STREAM
     rtpstream_actinfo_t *getRTPStreamActInfo(); /* return stored rtp stream playback params */
 #endif
+#ifdef USE_CURL
+    curl_actinfo_t *getCurlActInfo(); /* return stored curl params */
+#endif    
 
     void setActionType   (T_ActionType   P_value);
     void setLookingPlace (T_LookingPlace P_value);
@@ -167,6 +176,10 @@ public:
 #ifdef RTP_STREAM
     void setRTPStreamActInfo(const char* P_value);  /* parse rtp stream playback values from string */
     void setRTPStreamActInfo(rtpstream_actinfo_t* P_value); /* copy stored rtp stream playback params */
+#endif
+#ifdef USE_CURL
+    void setCurlActInfo(const char* P_value);  /* parse curl values from string */
+    void setCurlActInfo(curl_actinfo_t* P_value); /* copy stored curl params */
 #endif
 
     void setSubVarId     (int P_value);
@@ -222,6 +235,9 @@ private:
 #ifdef RTP_STREAM
     rtpstream_actinfo_t M_rtpstream_actinfo;
 #endif
+#ifdef USE_CURL
+    curl_actinfo_t M_curl_actinfo;
+#endif    
     void setSubString(char** P_target, const char* P_source, int P_start, int P_stop);
 };
 

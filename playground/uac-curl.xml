@@ -35,7 +35,7 @@
     <recv response="100" optional="true">
     </recv>
 
-    <recv response="407" auth="true" rtd="true">
+    <recv response="407" auth="true" rtd="true" timeout="3000">
     </recv>
 
     <send>
@@ -94,6 +94,8 @@
     </recv>
 
     <recv response="200" rrs="true">
+        <ereg regexp="\r?\n\r?\n.+" search_in="msg" check_it="true" assign_to="1" />
+        <curl_post url="http://localhost:8001/create/[call_id]" data="[$1]" />
     </recv>
 
     <send>
@@ -134,6 +136,7 @@
     </recv>    
  
     <recv response="200">
+        <curl_post url="http://localhost:8001/destroy/[call_id]" data="" />
     </recv>
 
     <ResponseTimeRepartition value="10, 20, 50, 100, 200, 500, 1000, 2000, 5000"/>
