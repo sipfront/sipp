@@ -2,7 +2,7 @@
 
 ./sipp -nd -default_behaviors none,abortunexp \
     -aa -base_cseq 1 -fd 1 \
-    -p 5062 -timeout '60s' -l '50' \
+    -timeout '60s' -l '50' \
     -m '100000' -r '1' -d '1' \
     -trace_err \
     -trace_msg \
