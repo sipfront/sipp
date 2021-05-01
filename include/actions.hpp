@@ -85,7 +85,7 @@ public:
         E_AT_RTP_ECHO,
 #endif
 #ifdef USE_CURL
-        E_AT_CURL_POST,
+        E_AT_CURL,
 #endif        
         E_AT_NB_ACTION
     };
@@ -145,7 +145,7 @@ public:
     rtpstream_actinfo_t *getRTPStreamActInfo(); /* return stored rtp stream playback params */
 #endif
 #ifdef USE_CURL
-    curl_actinfo_t *getCurlActInfo(); /* return stored curl params */
+    curl_actinfo_t *getCurlActInfo();
 #endif    
 
     void setActionType   (T_ActionType   P_value);
@@ -178,8 +178,10 @@ public:
     void setRTPStreamActInfo(rtpstream_actinfo_t* P_value); /* copy stored rtp stream playback params */
 #endif
 #ifdef USE_CURL
-    void setCurlActInfo(const char* P_value);  /* parse curl values from string */
-    void setCurlActInfo(curl_actinfo_t* P_value); /* copy stored curl params */
+    void setCurlMethod(const char* P_value);
+    void setCurlUrl(const char* P_value);
+    void setCurlData(const char* P_value);
+    void setCurlActInfo(curl_actinfo_t *P_value);
 #endif
 
     void setSubVarId     (int P_value);

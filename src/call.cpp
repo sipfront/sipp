@@ -3791,11 +3791,14 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
 #endif
 
 #ifdef USE_CURL
-        } else if (currentAction->getActionType() == CAction::E_AT_CURL_POST) {
-            // TODO: agranig: get SDP body, invoke curl post
-            // TODO: we've a var in the url, where is this replaced?
+        } else if (currentAction->getActionType() == CAction::E_AT_CURL) {
+            char *url = strdup(createSendingMessage(currentAction->getCurlActInfo()->url, -2));
+            char *data = strdup(createSendingMessage(currentAction->getCurlActInfo()->data, -2));
 
-            curl_post(sdp);
+            curl(currentAction->getCurlActInfo()->method, url, data);
+
+            free(url);
+            free(data);
 #endif
 
         } else {

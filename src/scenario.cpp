@@ -1622,6 +1622,22 @@ void scenario::parseAction(CActions *actions)
         } else if(!strcmp(actionElem, "trim")) {
             tmpAction->setVarId(xp_get_var("assign_to", "trim"));
             tmpAction->setActionType(CAction::E_AT_VAR_TRIM);
+#ifdef USE_CURL
+        } else if(!strcmp(actionElem, "curl")) {
+            if ((cptr = xp_get_value("url"))) {
+            }
+                tmpAction->setCurlUrl(cptr);
+            if ((cptr = xp_get_value("method"))) {
+                tmpAction->setCurlMethod(cptr);
+            }
+            if ((cptr = xp_get_value("data"))) {
+                tmpAction->setCurlData(cptr);
+            }
+            tmpAction->setActionType(CAction::E_AT_CURL);
+#else
+        } else if ((cptr = xp_get_value("curl_post"))) {
+            ERROR("Scenario specifies a curl_post action, but this version of SIPp does not have cURL support");
+#endif
         } else if(!strcmp(actionElem, "exec")) {
             if ((cptr = xp_get_value("command"))) {
                 tmpAction->setActionType(CAction::E_AT_EXECUTE_CMD);
@@ -1686,14 +1702,6 @@ void scenario::parseAction(CActions *actions)
 #else
             } else if ((cptr = xp_get_value("rtp_stream"))) {
                 ERROR("Scenario specifies a rtp_stream action, but this version of SIPp does not have RTP stream support");
-#endif
-#ifdef USE_CURL
-            } else if ((cptr = xp_get_value("curl_post"))) {
-                tmpAction->setCurlActInfo(cptr);
-                tmpAction->setActionType(CAction::E_AT_CURL_POST);
-#else
-            } else if ((cptr = xp_get_value("curl_post"))) {
-                ERROR("Scenario specifies a curl_post action, but this version of SIPp does not have cURL support");
 #endif
             } else {
                 ERROR("illegal <exec> in the scenario");

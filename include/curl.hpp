@@ -22,11 +22,20 @@
 #ifndef __CURL__
 #define __CURL__
 
-struct curl_actinfo_t
-{
-    char url[1024];
-}
+enum curl_method_t {
+    CURL_GET = 0,
+    CURL_POST,
+    CURL_DELETE,
+    CURL_PUT,
+    CURL_PATCH
+};
 
-void curl_post(char *data);
+struct curl_actinfo_t {
+    char url[1024];
+    char data[65536];
+    curl_method_t method;
+};
+
+void curl(curl_method_t method, const char* url, const char *data);
 
 #endif

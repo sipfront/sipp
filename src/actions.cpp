@@ -167,8 +167,8 @@ void CAction::printInfo(char* buf, int len)
 #endif
 
 #ifdef USE_CURL
-    } else if (M_action == E_AT_CURL_POST) {
-        snprintf(buf, len, "Type[%d] - curl_post", M_action);
+    } else if (M_action == E_AT_CURL) {
+        snprintf(buf, len, "Type[%d] - curl", M_action);
 #endif        
 
     } else {
@@ -588,16 +588,41 @@ void CAction::setRTPStreamActInfo(rtpstream_actinfo_t *P_value)
 #endif
 
 #ifdef USE_CURL
-void CAction::setCurlActInfo(const char* P_value)
-{
+
+
+void CAction::setCurlMethod(const char* P_value) {
+    if (!strcmp(P_value, "GET")) {
+        M_curl_actinfo.method = CURL_GET;
+    } else if(!strcmp(P_value, "POST")) {
+        M_curl_actinfo.method = CURL_POST;
+    } else if(!strcmp(P_value, "DELETE")) {
+        M_curl_actinfo.method = CURL_DELETE;
+    } else if(!strcmp(P_value, "PUT")) {
+        M_curl_actinfo.method = CURL_PUT;
+    } else if(!strcmp(P_value, "PATCH")) {
+        M_curl_actinfo.method = CURL_PATCH;
+    } else {
+        ERROR("Invalid curl method '%s'", P_value);
+    }
+}
+
+void CAction::setCurlUrl(const char* P_value) {
     if (strlen(P_value) >= sizeof(M_curl_actinfo.url)) {
-        ERROR("Parameter value '%s' for curl action is too long, maximum supported length is %zu",
+        ERROR("Parameter value '%s' for curl action url is too long, maximum supported length is %zu",
                 P_value, sizeof(M_curl_actinfo.url) - 1);
     }
     snprintf(M_curl_actinfo.url, sizeof(M_curl_actinfo.url), "%s", P_value);
 }
 
-void CAction::setStirShakenActInfo(stirshaken_actinfo_t *P_value)
+void CAction::setCurlData(const char* P_value) {
+    if (strlen(P_value) >= sizeof(M_curl_actinfo.data)) {
+        ERROR("Parameter value '%s' for curl action data is too long, maximum supported length is %zu",
+                P_value, sizeof(M_curl_actinfo.data) - 1);
+    }
+    snprintf(M_curl_actinfo.data, sizeof(M_curl_actinfo.data), "%s", P_value);
+}
+
+void CAction::setCurlActInfo(curl_actinfo_t *P_value)
 {
     memcpy(&M_curl_actinfo,P_value, sizeof(M_curl_actinfo));
 }
