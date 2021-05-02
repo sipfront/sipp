@@ -1,5 +1,5 @@
-#include "defines.h";
-#include "curl.hpp";
+#include "defines.h"
+#include "curl.hpp"
 
 static const char* curl_method2str(curl_method_t method) {
     switch (method) {

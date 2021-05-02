@@ -3,7 +3,7 @@ ADD . /src
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get -y install \
     build-essential cmake git \
-    libncurses-dev libpcap-dev \
+    libncurses-dev libpcap-dev libcurl4-openssl-dev \
     libgsl-dev libmosquitto-dev libssl-dev
 RUN cd /src && \
     rm -f CMakeCache.txt && \
