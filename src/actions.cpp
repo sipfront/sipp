@@ -607,19 +607,13 @@ void CAction::setCurlMethod(const char* P_value) {
 }
 
 void CAction::setCurlUrl(const char* P_value) {
-    if (strlen(P_value) >= sizeof(M_curl_actinfo.url)) {
-        ERROR("Parameter value '%s' for curl action url is too long, maximum supported length is %zu",
-                P_value, sizeof(M_curl_actinfo.url) - 1);
-    }
-    snprintf(M_curl_actinfo.url, sizeof(M_curl_actinfo.url), "%s", P_value);
+    WARNING("CURL setting url to %s\n", P_value);
+    M_curl_actinfo.url = new SendingMessage(M_scenario, P_value, true /* skip sanity */);
 }
 
 void CAction::setCurlData(const char* P_value) {
-    if (strlen(P_value) >= sizeof(M_curl_actinfo.data)) {
-        ERROR("Parameter value '%s' for curl action data is too long, maximum supported length is %zu",
-                P_value, sizeof(M_curl_actinfo.data) - 1);
-    }
-    snprintf(M_curl_actinfo.data, sizeof(M_curl_actinfo.data), "%s", P_value);
+    WARNING("CURL setting data to %s\n", P_value);
+    M_curl_actinfo.data = new SendingMessage(M_scenario, P_value, true /* skip sanity */);
 }
 
 void CAction::setCurlActInfo(curl_actinfo_t *P_value)
@@ -750,6 +744,11 @@ CAction::~CAction()
     if (M_distribution) {
         delete M_distribution;
     }
+
+#ifdef USE_CURL
+    delete M_curl_actinfo.url;
+    delete M_curl_actinfo.data;
+#endif
 }
 
 /****************************** CActions class ************************/

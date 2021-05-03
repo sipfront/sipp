@@ -1625,18 +1625,22 @@ void scenario::parseAction(CActions *actions)
 #ifdef USE_CURL
         } else if(!strcmp(actionElem, "curl")) {
             if ((cptr = xp_get_value("url"))) {
-            }
                 tmpAction->setCurlUrl(cptr);
+            } else {
+                ERROR("curl command in scenario is missing 'url' attribute\n");
+            }
             if ((cptr = xp_get_value("method"))) {
                 tmpAction->setCurlMethod(cptr);
+            } else {
+                tmpAction->setCurlMethod("GET");
             }
             if ((cptr = xp_get_value("data"))) {
                 tmpAction->setCurlData(cptr);
             }
             tmpAction->setActionType(CAction::E_AT_CURL);
 #else
-        } else if ((cptr = xp_get_value("curl_post"))) {
-            ERROR("Scenario specifies a curl_post action, but this version of SIPp does not have cURL support");
+        } else if ((cptr = xp_get_value("curl"))) {
+            ERROR("Scenario specifies a curl action, but this version of SIPp does not have cURL support");
 #endif
         } else if(!strcmp(actionElem, "exec")) {
             if ((cptr = xp_get_value("command"))) {

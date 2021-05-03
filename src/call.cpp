@@ -3792,13 +3792,19 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
 
 #ifdef USE_CURL
         } else if (currentAction->getActionType() == CAction::E_AT_CURL) {
-            char *url = strdup(createSendingMessage(currentAction->getCurlActInfo()->url, -2));
-            char *data = strdup(createSendingMessage(currentAction->getCurlActInfo()->data, -2));
+            char *url = NULL;
+            char *data = NULL;
 
+            url = strdup(createSendingMessage(currentAction->getCurlActInfo()->url, -2));
+            if (currentAction->getCurlActInfo()->data) {
+                data = strdup(createSendingMessage(currentAction->getCurlActInfo()->data, -2));
+            } 
             curl(currentAction->getCurlActInfo()->method, url, data);
 
-            free(url);
-            free(data);
+            if (url)
+                free(url);
+            if (data)
+                free(data);
 #endif
 
         } else {

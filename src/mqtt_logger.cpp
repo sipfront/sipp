@@ -192,7 +192,7 @@ void print_error_codes_mqtt()
             jsonDataStr.length(), jsonDataStr.c_str(),
             2, false);
     if (ret != MOSQ_ERR_SUCCESS) {
-        WARNING("MQTT: failed to publish counts: %s\n", mosquitto_strerror(ret));
+        WARNING("MQTT: failed to publish error codes: %s\n", mosquitto_strerror(ret));
     }
 }
 
@@ -268,6 +268,6 @@ void print_message_mqtt(struct timeval *currentTime, const char* cid, const char
             jsonDataStr.length(), jsonDataStr.c_str(),
             2, false);
     if (ret != MOSQ_ERR_SUCCESS) {
-        WARNING("MQTT: failed to publish message: %s\n", mosquitto_strerror(ret));
+        WARNING("MQTT: failed to publish printed message: %s\n", mosquitto_strerror(ret));
     }
 }

@@ -6,6 +6,7 @@
     -m '100000' -r '1' -d '1' \
     -trace_err \
     -trace_msg \
-    -sf 'playground/uac.xml' -inf 'playground/caller.csv' -inf 'playground/callee.csv' \
+    -trace_logs \
+    -sf 'playground/uac_curl.xml' -inf 'playground/caller.csv' -inf 'playground/callee.csv' \
     -key target_uri 'sip:c5.dev.sipfront.com:5060;transport=udp' \
     -t u1 c5.dev.sipfront.com:5060

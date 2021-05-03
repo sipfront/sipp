@@ -374,7 +374,9 @@ int TRACE_MSG_PARTS(struct timeval *currentTime, const char* cid, const char* di
 {
     int ret = 0;
 #ifdef USE_MQTT
-    print_message_mqtt(currentTime, cid, direction, transport, sock_type, msg_size, msg);
+    if (mqtt_stats) {
+        print_message_mqtt(currentTime, cid, direction, transport, sock_type, msg_size, msg);
+    }
 #endif
     return ret;
 }

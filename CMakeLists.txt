@@ -73,6 +73,11 @@ if(NOT USE_MQTT)
     "${PROJECT_SOURCE_DIR}/src/mqtt_logger.cpp")
 endif(NOT USE_MQTT)
 
+if(NOT USE_CURL)
+  list(REMOVE_ITEM all_SRCS
+    "${PROJECT_SOURCE_DIR}/src/curl.cpp")
+endif(NOT USE_CURL)
+
 if(USE_SSL)
   add_definitions("-DUSE_TLS -DUSE_OPENSSL")
 endif()

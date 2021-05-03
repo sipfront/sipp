@@ -24,6 +24,6 @@ static const char* curl_method2str(curl_method_t method) {
     };
 }
 
-void curl(curl_method_t method, const char* url, const char *data) {
-    WARNING("+++++ curl %s to %s with data '%s'", curl_method2str(method), url, data);
+void curl(curl_method_t method, char* url, char *data) {
+    WARNING("+++++ curl %s to %s with data '%s'\n", curl_method2str(method), url, data);
 }

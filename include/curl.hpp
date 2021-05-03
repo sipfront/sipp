@@ -22,6 +22,8 @@
 #ifndef __CURL__
 #define __CURL__
 
+#include "message.hpp"
+
 enum curl_method_t {
     CURL_GET = 0,
     CURL_POST,
@@ -31,11 +33,11 @@ enum curl_method_t {
 };
 
 struct curl_actinfo_t {
-    char url[1024];
-    char data[65536];
+    SendingMessage *url;
+    SendingMessage *data;
     curl_method_t method;
 };
 
-void curl(curl_method_t method, const char* url, const char *data);
+void curl(curl_method_t method, char* url, char *data);
 
 #endif
