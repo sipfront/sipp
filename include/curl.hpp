@@ -27,17 +27,20 @@
 enum curl_method_t {
     CURL_GET = 0,
     CURL_POST,
-    CURL_DELETE,
     CURL_PUT,
-    CURL_PATCH
+    CURL_DELETE
 };
 
 struct curl_actinfo_t {
     SendingMessage *url;
     SendingMessage *data;
+    SendingMessage *content_type;
     curl_method_t method;
 };
 
-void curl(curl_method_t method, char* url, char *data);
+void sipp_curl(curl_method_t method, char* url, char* data, char* content_type);
+
+int sipp_curl_fd(int fd);
+void sipp_curl_handle_fd(int fd, int revents);
 
 #endif

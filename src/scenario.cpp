@@ -1637,6 +1637,9 @@ void scenario::parseAction(CActions *actions)
             if ((cptr = xp_get_value("data"))) {
                 tmpAction->setCurlData(cptr);
             }
+            if ((cptr = xp_get_value("content_type"))) {
+                tmpAction->setCurlContentType(cptr);
+            }
             tmpAction->setActionType(CAction::E_AT_CURL);
 #else
         } else if ((cptr = xp_get_value("curl"))) {

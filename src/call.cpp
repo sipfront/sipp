@@ -3794,17 +3794,23 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
         } else if (currentAction->getActionType() == CAction::E_AT_CURL) {
             char *url = NULL;
             char *data = NULL;
+            char *content_type = NULL;
 
             url = strdup(createSendingMessage(currentAction->getCurlActInfo()->url, -2));
             if (currentAction->getCurlActInfo()->data) {
                 data = strdup(createSendingMessage(currentAction->getCurlActInfo()->data, -2));
             } 
-            curl(currentAction->getCurlActInfo()->method, url, data);
+            if (currentAction->getCurlActInfo()->content_type) {
+                content_type = strdup(createSendingMessage(currentAction->getCurlActInfo()->content_type, -2));
+            } 
+            sipp_curl(currentAction->getCurlActInfo()->method, url, data, content_type);
 
             if (url)
                 free(url);
             if (data)
                 free(data);
+            if (content_type)
+                free(content_type);
 #endif
 
         } else {

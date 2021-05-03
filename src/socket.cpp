@@ -49,6 +49,10 @@
 #include "socket.hpp"
 #include "logger.hpp"
 
+#ifdef USE_CURL
+#include "curl.hpp"
+#endif
+
 /* Older non C++11 gcc (4.6) does not have nullptr */
 #define const_char_nullptr (reinterpret_cast<const char*>(0))
 
@@ -573,6 +577,8 @@ void setup_mqtt_socket()
     int keepalive_seconds = 3;
     int ret;
 
+    WARNING("setting up mqtt socket\n");
+
     mosquitto_lib_init();
     // TODO: agranig: let clientid be passed via cmdline
     mqtt_handler = mosquitto_new(NULL, true, NULL);
@@ -594,7 +600,6 @@ void setup_mqtt_socket()
     mosquitto_disconnect_callback_set(mqtt_handler, mqtt_cb_disconnect);
 
     if (mqtt_ca_file) {
-        WARNING("MQTT connect to %s:%d\n", mqtt_host, mqtt_port);
         mosquitto_tls_set(mqtt_handler, mqtt_ca_file, NULL, NULL, NULL, NULL);
     }
     do {
@@ -614,6 +619,9 @@ void setup_mqtt_socket()
 int handle_mqtt_socket()
 {
     int ret;
+
+    if (!mqtt_handler)
+        return 0;
 
     ret = mosquitto_loop_read(mqtt_handler, 1);
     if (ret == MOSQ_ERR_CONN_LOST) {
@@ -1327,7 +1335,6 @@ void process_message(SIPpSocket *socket, char *msg, ssize_t msg_size, struct soc
             if (quitting >= 1) {
                 CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
                 TRACE_MSG("Discarded message for new calls while quitting\n");
-                WARNING("agranig: Discarded message for new calls while quitting\n");
                 return;
             }
 
@@ -3028,6 +3035,14 @@ void SIPpSocket::pollset_process(int wait)
     /* We need to flush all sockets and pull data into all of our buffers. */
 #ifdef HAVE_EPOLL
     for (int event_idx = 0; event_idx < rs; event_idx++) {
+
+#ifdef USE_CURL
+
+        if (sipp_curl_fd(epollevents[event_idx].data.fd)) {
+            sipp_curl_handle_fd(epollevents[event_idx].data.fd, epollevents[event_idx].events);
+            continue;
+        }
+#endif
         int poll_idx = (int)epollevents[event_idx].data.u32;
 #else
     for (size_t poll_idx = 0; rs > 0 && poll_idx < pollnfds; poll_idx++) {
@@ -3153,6 +3168,12 @@ void SIPpSocket::pollset_process(int wait)
          * pending_messages queue again. */
 
 #ifdef HAVE_EPOLL
+
+
+        // TODO: agranig: make sure to not call sock->xxx on curl event
+
+
+
         unsigned old_pollnfds = pollnfds;
         getmilliseconds();
         /* Keep processing messages until this socket is freed (changing the number of file descriptors) or we run out of messages. */

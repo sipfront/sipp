@@ -43,9 +43,8 @@
 
     <recv response="200" rrs="true">
         <action>
-            <ereg regexp="\r?\n\r?\n.+" search_in="msg" check_it="true" assign_to="1" />
-            <log message="INLINE body=[$1]" />
-        	<curl method="POST" url="http://localhost:8001/create/[call_id]" data="[$1]" />
+            <ereg regexp=".+" search_in="body" check_it="true" assign_to="1" />
+            <curl method="POST" content_type="application/sdp" url="http://localhost:8001/create/[call_id]" data="[$1]" />
         </action>
     </recv>
 

@@ -591,29 +591,29 @@ void CAction::setRTPStreamActInfo(rtpstream_actinfo_t *P_value)
 
 
 void CAction::setCurlMethod(const char* P_value) {
-    if (!strcmp(P_value, "GET")) {
+    if (!strcmp(P_value, "GET") || !strcmp(P_value, "get")) {
         M_curl_actinfo.method = CURL_GET;
-    } else if(!strcmp(P_value, "POST")) {
+    } else if(!strcmp(P_value, "POST") || !strcmp(P_value, "post")) {
         M_curl_actinfo.method = CURL_POST;
-    } else if(!strcmp(P_value, "DELETE")) {
+    } else if(!strcmp(P_value, "DELETE") || !strcmp(P_value, "delete")) {
         M_curl_actinfo.method = CURL_DELETE;
-    } else if(!strcmp(P_value, "PUT")) {
+    } else if(!strcmp(P_value, "PUT") || !strcmp(P_value, "put")) {
         M_curl_actinfo.method = CURL_PUT;
-    } else if(!strcmp(P_value, "PATCH")) {
-        M_curl_actinfo.method = CURL_PATCH;
     } else {
         ERROR("Invalid curl method '%s'", P_value);
     }
 }
 
 void CAction::setCurlUrl(const char* P_value) {
-    WARNING("CURL setting url to %s\n", P_value);
     M_curl_actinfo.url = new SendingMessage(M_scenario, P_value, true /* skip sanity */);
 }
 
 void CAction::setCurlData(const char* P_value) {
-    WARNING("CURL setting data to %s\n", P_value);
     M_curl_actinfo.data = new SendingMessage(M_scenario, P_value, true /* skip sanity */);
+}
+
+void CAction::setCurlContentType(const char* P_value) {
+    M_curl_actinfo.content_type = new SendingMessage(M_scenario, P_value, true /* skip sanity */);
 }
 
 void CAction::setCurlActInfo(curl_actinfo_t *P_value)

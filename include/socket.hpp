@@ -24,6 +24,10 @@
 #include "sslsocket.hpp"
 #endif
 
+#ifdef HAVE_EPOLL
+extern int epollfd;
+#endif
+
 /**
  * On some systems you must pass the exact sockaddr struct size to
  * connect/bind/sendto calls. Passing a length that is too large

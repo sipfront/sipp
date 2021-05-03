@@ -181,6 +181,7 @@ public:
     void setCurlMethod(const char* P_value);
     void setCurlUrl(const char* P_value);
     void setCurlData(const char* P_value);
+    void setCurlContentType(const char* P_value);
     void setCurlActInfo(curl_actinfo_t *P_value);
 #endif
 
