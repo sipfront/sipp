@@ -3037,7 +3037,6 @@ void SIPpSocket::pollset_process(int wait)
     for (int event_idx = 0; event_idx < rs; event_idx++) {
 
 #ifdef USE_CURL
-
         if (sipp_curl_fd(epollevents[event_idx].data.fd)) {
             sipp_curl_handle_fd(epollevents[event_idx].data.fd, epollevents[event_idx].events);
             continue;
@@ -3052,6 +3051,8 @@ void SIPpSocket::pollset_process(int wait)
         int ret = 0;
 
         assert(sock);
+        if (!sock)
+            continue;
 
 #ifdef HAVE_EPOLL
         if (epollevents[event_idx].events & EPOLLOUT) {
