@@ -318,7 +318,7 @@ void sipp_curl(curl_method_t method, char* url, char *data, char* content_type) 
     }
     conn->global = &g;
     // TODO: agranig: if we want escaped urls, we have to split fqdn from path!
-    // conn->url = strdup(curl_easy_escape(conn->easy, url, strlen(url)));
+    // conn->url = curl_easy_escape(conn->easy, url, strlen(url));
     conn->url = strdup(url);
     if (data) {
         conn->data = strdup(data);
