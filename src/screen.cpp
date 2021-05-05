@@ -60,7 +60,7 @@ void screen_exit()
 
 void screen_init()
 {
-    if (backgroundMode || screen_inited) {
+    if (noscreen || backgroundMode || screen_inited) {
         return;
     }
 
@@ -75,7 +75,7 @@ void screen_init()
 
 void print_statistics(int last)
 {
-    if (backgroundMode == false && display_scenario) {
+    if (noscreen == false && backgroundMode == false && display_scenario) {
       sp->redraw();
     }
 }

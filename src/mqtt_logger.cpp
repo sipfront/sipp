@@ -106,13 +106,15 @@ void print_count_mqtt()
             if (lose_packets) {
                 jsonData << "," << JQV(Lost, curmsg->nb_lost);
             }
+        } else if (curmsg->M_type == MSG_TYPE_NOP) {
+            jsonData 
+                << JQC(Type, "nop")
+                << JQV(Name, "NOP");
         } else if (curmsg->pause_distribution || curmsg->pause_variable) {
             jsonData 
                 << JQC(Type, "pause")
                 << JQC(Sessions, curmsg->sessions)
                 << JQV(Unexp, curmsg->nb_unexp);
-        } else if (curmsg->M_type == MSG_TYPE_NOP) {
-            /* No output. */
         } else if (curmsg->M_type == MSG_TYPE_RECVCMD) {
             jsonData 
                 << JQC(Type, "recvcmd")
