@@ -1034,7 +1034,7 @@ static void help_stats()
 static void print_last_stats()
 {
     interrupt = 1;
-    if (sp) {
+    if (sp && !noscreen) {
       sp->print_closing_stats();
     }
     if (main_scenario) {
