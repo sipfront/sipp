@@ -105,7 +105,9 @@ static void check_multi_info(GlobalInfo *g) {
     
       // TODO: agranig: should we store the result somewhere, like in a var?
       // e.g. code, body, ...
-      WARNING("DONE: %s => (%d) %s\n", eff_url, res, conn->error);
+      if (res > 0) {
+          WARNING("curl failed: %s => (%d) %s\n", eff_url, res, conn->error);
+      }
       
       curl_multi_remove_handle(g->multi, easy);
       free(conn->url);
