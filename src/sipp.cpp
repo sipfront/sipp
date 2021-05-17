@@ -2180,5 +2180,17 @@ int main(int argc, char *argv[])
 
     free(scenario_file);
     free(scenario_path);
+
+    // agranig: TODO: give it one more sec to send mqtt before closing
+    // epoll... we should rather move mqtt to an entire new thread?
+#ifdef USE_MQTT
+    //WARNING("waiting for mqtt before quitting\n");
+    cerr << "waiting for mqtt before quitting" << endl;
+    mosquitto_loop_start(mqtt_handler);
+    sipp_usleep(3000000);
+    mosquitto_loop_stop(mqtt_handler, true);
+    cerr << "done waiting for mqtt before quitting" << endl;
+#endif
+
     sipp_exit(EXIT_TEST_RES_UNKNOWN);
 }

@@ -139,7 +139,7 @@ void print_count_mqtt()
     int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_countstats_topic,
             jsonDataStr.length(), jsonDataStr.c_str(),
             2, false);
-    if (ret != MOSQ_ERR_SUCCESS) {
+    if (ret != MOSQ_ERR_SUCCESS && !quitting) {
         WARNING("MQTT: failed to publish counts: %s\n", mosquitto_strerror(ret));
     }
 }
@@ -193,7 +193,7 @@ void print_error_codes_mqtt()
     int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_codestats_topic,
             jsonDataStr.length(), jsonDataStr.c_str(),
             2, false);
-    if (ret != MOSQ_ERR_SUCCESS) {
+    if (ret != MOSQ_ERR_SUCCESS && !quitting) {
         WARNING("MQTT: failed to publish error codes: %s\n", mosquitto_strerror(ret));
     }
 }
@@ -250,6 +250,10 @@ void print_message_mqtt(struct timeval *currentTime, const char* cid, const char
     std::string strbuf = do_replace(std::string(msg), "\r?\n", "\\r\\n");
     strbuf = do_replace(strbuf, "\"", "\\\"");
 
+    if (quitting) {
+        return;
+    }
+
     jsonData
         << "{"
         << JQC(CurrentTime, CStat::formatTime(currentTime, true))
@@ -269,7 +273,7 @@ void print_message_mqtt(struct timeval *currentTime, const char* cid, const char
     int ret = mosquitto_publish(mqtt_handler, NULL, mqtt_message_topic,
             jsonDataStr.length(), jsonDataStr.c_str(),
             2, false);
-    if (ret != MOSQ_ERR_SUCCESS) {
+    if (ret != MOSQ_ERR_SUCCESS && !quitting) {
         WARNING("MQTT: failed to publish printed message: %s\n", mosquitto_strerror(ret));
     }
 }
