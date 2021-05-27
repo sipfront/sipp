@@ -1282,6 +1282,8 @@ void process_message(SIPpSocket *socket, char *msg, ssize_t msg_size, struct soc
     if (useShortMessagef == 1) {
         TRACE_SHORTMSG("%s\tR\t%s\tCSeq:%s\t%s\n",
                        CStat::formatTime(&currentTime), call_id, get_header_content(msg, "CSeq:"), get_first_line(msg));
+        TRACE_MSG_PARTS(&currentTime, call_id, "recv", TRANSPORT_TO_STRING(socket->ss_transport),
+                socket->ss_control ? "control " : "", msg_size, get_first_line(msg));
     }
 
     if (useMessagef == 1) {
@@ -2403,6 +2405,8 @@ int SIPpSocket::write(const char *buffer, ssize_t len, int flags, struct sockadd
             const char *call_id = get_trimmed_call_id(msg);
             TRACE_SHORTMSG("%s\tS\t%s\tCSeq:%s\t%s\n",
                            CStat::formatTime(&currentTime), call_id, get_header_content(msg, "CSeq:"), get_first_line(msg));
+            TRACE_MSG_PARTS(&currentTime, call_id, "send", TRANSPORT_TO_STRING(ss_transport),
+                    ss_control ? "control " : "", len, get_first_line(msg));
             free(msg);
         }
 
