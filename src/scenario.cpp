@@ -1775,6 +1775,21 @@ void scenario::parseAction(CActions *actions)
                     ERROR("Scenario specifies a rtp_echo action -- but this version of SIPp does not have RTP stream::RtpEcho support");
                 }
 #endif
+#ifdef STIRSHAKEN
+            } else if ((cptr = xp_get_value("stirshaken_validate_with_key"))) {
+                tmpAction->setStirShakenActInfo(cptr);
+                tmpAction->setActionType(CAction::E_AT_STIRSHAKEN_VALIDATE_WITH_KEY);
+            } else if ((cptr = xp_get_value("stirshaken_validate_with_cert"))) {
+                tmpAction->setStirShakenActInfo(cptr);
+                tmpAction->setActionType(CAction::E_AT_STIRSHAKEN_VALIDATE_WITH_CERT);
+            } else if ((cptr = xp_get_value("stirshaken_validate"))) {
+                tmpAction->setActionType(CAction::E_AT_STIRSHAKEN_VALIDATE);
+#else
+            } else if ((cptr = xp_get_value("stirshaken_validate_with_key"))) {
+                ERROR("Scenario specifies a stirshaken_validate_with_key action, but this version of SIPp does not have STIR/SHAKEN support");
+            } else if ((cptr = xp_get_value("stirshaken_validate_with_cert"))) {
+                ERROR("Scenario specifies a stirshaken_validate_with_cert action, but this version of SIPp does not have STIR/SHAKEN support");
+#endif
             } else {
                 ERROR("illegal <exec> in the scenario");
             }

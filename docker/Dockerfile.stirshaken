@@ -1,0 +1,8 @@
+FROM debian:stable-slim
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y gnupg2 wget lsb-release
+RUN wget -O - https://files.freeswitch.org/repo/deb/debian-release/fsstretch-archive-keyring.asc | apt-key add -
+RUN echo "deb http://files.freeswitch.org/repo/deb/debian-release/ `lsb_release -sc` main" > /etc/apt/sources.list.d/freeswitch.list
+RUN echo "deb-src http://files.freeswitch.org/repo/deb/debian-release/ `lsb_release -sc` main" >> /etc/apt/sources.list.d/freeswitch.list
+RUN apt-get update
+RUN apt-get -y install vim git clang-tools-7 build-essential automake autoconf libtool libcurl4-openssl-dev libjwt-dev libks libssl-dev pkg-config uuid-dev cmake libstirshaken-dev

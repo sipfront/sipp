@@ -26,6 +26,7 @@ option(USE_SSL "Build with SIPS support" OFF)
 option(USE_SCTP "Build with SCTP support" OFF)
 option(USE_PCAP "Build with PCAP playback support" OFF)
 option(USE_GSL "Build with improved statistical support" ON)
+option(USE_STIRSHAKEN "Build with STIR/SHAKEN support" OFF)
 
 file(GLOB all_SRCS
   "${PROJECT_SOURCE_DIR}/src/*.cpp"
@@ -133,6 +134,10 @@ endif(USE_SCTP)
 
 add_definitions("-DRTP_STREAM")
 
+if(USE_STIRSHAKEN)
+  add_definitions("-DSTIRSHAKEN")
+endif(USE_STIRSHAKEN)
+
 # add the executable
 link_directories("/usr/local/lib")
 add_executable(sipp ${all_SRCS} "${PROJECT_SOURCE_DIR}/src/sipp.cpp")
@@ -238,5 +243,10 @@ if(USE_SCTP)
     target_link_libraries(sipp_unittest ${SCTP_LIBRARY})
   endif()
 endif()
+
+if(USE_STIRSHAKEN)
+  target_link_libraries(sipp stirshaken ks uuid crypto ssl)
+  target_link_libraries(sipp_unittest stirshaken ks uuid crypto ssl)
+endif(USE_STIRSHAKEN)
 
 install(TARGETS sipp DESTINATION bin)

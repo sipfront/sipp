@@ -34,6 +34,10 @@ class CSample;
 #include "rtpstream.hpp"
 #endif
 
+#ifdef STIRSHAKEN
+#include "stirshaken.hpp"
+#endif
+
 #define MAX_ACTION_MESSAGE 3
 
 class CAction
@@ -95,6 +99,11 @@ public:
         E_AT_RTP_STREAM_RTPECHO_STARTVIDEO,
         E_AT_RTP_STREAM_RTPECHO_STOPVIDEO,
 #endif
+#ifdef STIRSHAKEN
+        E_AT_STIRSHAKEN_VALIDATE_WITH_KEY,
+        E_AT_STIRSHAKEN_VALIDATE_WITH_CERT,
+        E_AT_STIRSHAKEN_VALIDATE,
+#endif
         E_AT_NB_ACTION
     };
 
@@ -153,6 +162,9 @@ public:
     rtpecho_actinfo_t* getRTPEchoActInfo();  /* returns stored rtp echo params */
     rtpstream_actinfo_t* getRTPStreamActInfo(); /* return stored rtp stream playback params */
 #endif
+#ifdef STIRSHAKEN
+    stirshaken_actinfo_t *getStirShakenActInfo(); /* return stored stirshaken validation params */
+#endif
 
     void setActionType   (T_ActionType   P_value);
     void setLookingPlace (T_LookingPlace P_value);
@@ -184,6 +196,10 @@ public:
     void setRTPEchoActInfo(rtpecho_actinfo_t* P_value);  /* copy stored rtp echo params */
     void setRTPStreamActInfo(const char *P_value);  /* parse rtp stream playback values from string */
     void setRTPStreamActInfo(rtpstream_actinfo_t* P_value); /* copy stored rtp stream playback params */
+#endif
+#ifdef STIRSHAKEN
+    void setStirShakenActInfo(const char* P_value);  /* parse stirshaken validation values from string */
+    void setStirShakenActInfo(stirshaken_actinfo_t* P_value); /* copy stored stirshaken validation params */
 #endif
 
     void setSubVarId     (int P_value);
@@ -239,6 +255,9 @@ private:
 #ifdef RTP_STREAM
     rtpecho_actinfo_t M_rtpecho_actinfo;
     rtpstream_actinfo_t M_rtpstream_actinfo;
+#endif
+#ifdef STIRSHAKEN
+    stirshaken_actinfo_t M_stirshaken_actinfo;
 #endif
     void setSubString(char** P_target, const char* P_source, int P_start, int P_stop);
 };

@@ -87,6 +87,10 @@ typedef enum {
     E_Message_SippVersion,
     E_Message_File,
     E_Message_Custom
+#ifdef STIRSHAKEN
+    ,
+    E_Message_Identity
+#endif
 #ifdef RTP_STREAM
     ,
     E_Message_RTPStream_Audio_Port,
@@ -145,6 +149,9 @@ public:
     bool isCancel();
 
     static void parseAuthenticationKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword);
+#ifdef STIRSHAKEN
+    static void parseIdentityKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword);
+#endif
     static void freeMessageComponent(struct MessageComponent *comp);
 private:
     std::vector <struct MessageComponent *> messageComponents;
@@ -192,6 +199,22 @@ struct MessageComponent {
             int field;
             SendingMessage *line;
         } field_param;
+#ifdef STIRSHAKEN
+        /* Identity Parameters. */
+        struct {
+            char *x5u;
+            char *attest;
+            char *origtn;
+            char *origtn_file;
+            int origtn_field;
+            char *desttn;
+            char *desttn_file;
+            int desttn_field;
+            char *origid;
+            char *keypath;
+            char *iat;
+        } identity_param;
+#endif
         SendingMessage *filename;
         customKeyword fxn;
     } comp_param;

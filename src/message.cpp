@@ -358,6 +358,11 @@ SendingMessage::SendingMessage(scenario* msg_scenario, const char* const_src, bo
                 ERROR("The %s keyword requires PCAPPLAY", keyword);
             }
 #endif
+#ifdef STIRSHAKEN
+            else if(!strncmp(keyword, "identity", strlen("identity"))) {
+                parseIdentityKeyword(msg_scenario, newcomp, keyword);
+            }
+#endif
             else {
                 // scan for the generic parameters - must be last test
 
@@ -602,6 +607,105 @@ void SendingMessage::parseAuthenticationKeyword(scenario *msg_scenario, struct M
     dst->comp_param.auth_param.aka_AMF = new SendingMessage(msg_scenario, my_aka, true);
 }
 
+#ifdef STIRSHAKEN
+void SendingMessage::parseIdentityKeyword(scenario *msg_scenario, struct MessageComponent *dst, char *keyword)
+{
+    dst->type = E_Message_Identity;
+
+    char x5u[KEYWORD_SIZE + 1] = "";
+    char attest[KEYWORD_SIZE + 1] = "";
+    char origtn[KEYWORD_SIZE + 1] = "";
+    char origtn_file[KEYWORD_SIZE + 1] = "";
+    char origtn_field[KEYWORD_SIZE + 1] = "";
+    char desttn[KEYWORD_SIZE + 1] = "";
+    char desttn_file[KEYWORD_SIZE + 1] = "";
+    char desttn_field[KEYWORD_SIZE + 1] = "";
+    char origid[KEYWORD_SIZE + 1] = "";
+    char keypath[KEYWORD_SIZE + 1] = "";
+    char iat[KEYWORD_SIZE + 1] = "";
+
+    getKeywordParam(keyword, "x5u=", x5u);
+    if (x5u[0] == '\0') {
+        ERROR("No x5u url was specified!");
+    }
+    dst->comp_param.identity_param.x5u = strdup(x5u);
+
+    getKeywordParam(keyword, "attest=", attest);
+    if (attest[0] == '\0') {
+        ERROR("No attest type was specified!");
+    }
+    dst->comp_param.identity_param.attest = strdup(attest);
+
+    getKeywordParam(keyword, "origtn=", origtn);
+    if (origtn[0] == '\0') {
+        getKeywordParam(keyword, "origtn_file=", origtn_file);
+        if (origtn_file[0] == '\0') {
+            ERROR("Neither origtn nor origtn_file was specified!");
+        }
+        if (inFiles.find(origtn_file) == inFiles.end()) {
+            ERROR("Invalid origtn_file name: %s", origtn_file);
+        }
+        dst->comp_param.identity_param.origtn_file = strdup(origtn_file);
+
+        getKeywordParam(keyword, "origtn_field=", origtn_field);
+        if (origtn_field[0] == '\0') {
+            ERROR("No origtn_field was specified!");
+        }
+        dst->comp_param.identity_param.origtn_field = atoi(origtn_field);
+        dst->comp_param.identity_param.origtn = NULL;
+    } else {
+        dst->comp_param.identity_param.origtn = strdup(origtn);
+        dst->comp_param.identity_param.origtn_file = NULL;
+    }
+
+    getKeywordParam(keyword, "desttn=", desttn);
+    if (desttn[0] == '\0') {
+        getKeywordParam(keyword, "desttn_file=", desttn_file);
+        if (desttn_file[0] == '\0') {
+            ERROR("Neither desttn nor desttn_file was specified!");
+        }
+        if (inFiles.find(desttn_file) == inFiles.end()) {
+            ERROR("Invalid desttn_file name: %s", desttn_file);
+        }
+        dst->comp_param.identity_param.desttn_file = strdup(desttn_file);
+
+        getKeywordParam(keyword, "desttn_field=", desttn_field);
+        if (desttn_field[0] == '\0') {
+            ERROR("No desttn_field was specified!");
+        }
+        dst->comp_param.identity_param.desttn_field = atoi(desttn_field);
+        dst->comp_param.identity_param.desttn = NULL;
+    } else {
+        dst->comp_param.identity_param.desttn = strdup(desttn);
+        dst->comp_param.identity_param.desttn_file = NULL;
+    }
+
+    getKeywordParam(keyword, "origid=", origid);
+    if (origid[0] == '\0') {
+        // we generate it when creating the Identity header
+        dst->comp_param.identity_param.origid = NULL;
+    } else {
+        dst->comp_param.identity_param.origid = strdup(origid);
+    }
+
+    getKeywordParam(keyword, "keypath=", keypath);
+    if (keypath[0] == '\0') {
+        // we use the authentication service with default key
+        dst->comp_param.identity_param.keypath = NULL;
+    } else {
+        dst->comp_param.identity_param.keypath = strdup(keypath);
+    }
+
+    getKeywordParam(keyword, "iat=", iat);
+    if (iat[0] == '\0') {
+        // we take the current time when creating the Identity header
+        dst->comp_param.identity_param.iat = NULL;
+    } else {
+        dst->comp_param.identity_param.iat = strdup(iat);
+    }
+}
+#endif
+
 void SendingMessage::freeMessageComponent(struct MessageComponent *comp)
 {
     free(comp->literal);
@@ -624,6 +728,37 @@ void SendingMessage::freeMessageComponent(struct MessageComponent *comp)
     } else if (comp->type == E_Message_Injection) {
         free(comp->comp_param.field_param.filename);
     }
+#ifdef STIRSHAKEN
+    else if (comp->type == E_Message_Identity) {
+        if (comp->comp_param.identity_param.x5u) {
+            free(comp->comp_param.identity_param.x5u);
+        }
+        if (comp->comp_param.identity_param.attest) {
+            free(comp->comp_param.identity_param.attest);
+        }
+        if (comp->comp_param.identity_param.origtn) {
+            free(comp->comp_param.identity_param.origtn);
+        }
+        if (comp->comp_param.identity_param.origtn_file) {
+            free(comp->comp_param.identity_param.origtn_file);
+        }
+        if (comp->comp_param.identity_param.desttn) {
+            free(comp->comp_param.identity_param.desttn);
+        }
+        if (comp->comp_param.identity_param.desttn_file) {
+            free(comp->comp_param.identity_param.desttn_file);
+        }
+        if (comp->comp_param.identity_param.origid) {
+            free(comp->comp_param.identity_param.origid);
+        }
+        if (comp->comp_param.identity_param.keypath) {
+            free(comp->comp_param.identity_param.keypath);
+        }
+        if (comp->comp_param.identity_param.iat) {
+            free(comp->comp_param.identity_param.iat);
+        }
+    }
+#endif
     free(comp);
 }
 

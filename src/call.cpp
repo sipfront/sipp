@@ -63,6 +63,10 @@
 #include "config.h"
 #include "version.h"
 
+#ifdef STIRSHAKEN
+#include "stirshaken.hpp"
+#endif
+
 template<typename Out>
 void split(const std::string &s, char delim, Out result) {
     std::stringstream ss;
@@ -4026,8 +4030,44 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
                              tdm_map_z+(tdm_map_number)%(tdm_map_c+1)
                             );
             break;
+#ifdef STIRSHAKEN
+        case E_Message_Identity: {
+            char origtn[256 + 1] = "";
+            char desttn[256 + 1] = "";
+            char *identity_header = NULL;
+            char *tmp;
+
+            if (!comp->comp_param.identity_param.origtn) {
+                tmp = origtn;
+                getFieldFromInputFile(comp->comp_param.identity_param.origtn_file, comp->comp_param.identity_param.origtn_field, NULL, tmp);
+            }
+            if (!comp->comp_param.identity_param.desttn) {
+                tmp = desttn;
+                getFieldFromInputFile(comp->comp_param.identity_param.desttn_file, comp->comp_param.identity_param.desttn_field, NULL, tmp);
+            }
+
+            identity_header = stirshaken_create_identity_header(
+                    comp->comp_param.identity_param.x5u,
+                    comp->comp_param.identity_param.attest,
+                    comp->comp_param.identity_param.origtn ? comp->comp_param.identity_param.origtn : origtn,
+                    comp->comp_param.identity_param.desttn ? comp->comp_param.identity_param.desttn : desttn,
+                    comp->comp_param.identity_param.origid,
+                    comp->comp_param.identity_param.keypath,
+                    comp->comp_param.identity_param.iat);
+
+            if(identity_header) {
+                dest += sprintf(dest, "%s", identity_header);
+                free(identity_header);
+            }
+            if (*(dest - 1) == '\n') {
+                suppresscrlf = true;
+            }
+            break;
+        }
+#endif
         }
     }
+
     /* Need the body for length and auth-int calculation */
     char *body;
     const char *auth_body = NULL;
@@ -6123,6 +6163,33 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
                 return(call::E_AR_STOP_CALL);
                 break;
             }
+
+#ifdef STIRSHAKEN
+        } else if (currentAction->getActionType() == CAction::E_AT_STIRSHAKEN_VALIDATE_WITH_KEY) {
+            char* identity = get_header_content(msg, "identity:");
+            char *keypath = currentAction->getStirShakenActInfo()->keypath;
+
+            WARNING("validating stirshaken using key with identity '%s' and keypath=%s\n",
+                    identity ? identity : "<null>", keypath);
+            stirshaken_res_t res = stirshaken_validate_identity_header_with_key(identity, keypath);
+            WARNING("validation result is: %s\n", res == STIRSHAKEN_RES_OK ? "ok" : "failed");
+        } else if (currentAction->getActionType() == CAction::E_AT_STIRSHAKEN_VALIDATE_WITH_CERT) {
+            char* identity = get_header_content(msg, "identity:");
+            char *certpath = currentAction->getStirShakenActInfo()->keypath;
+
+            WARNING("validating stirshaken using cert with identity '%s' and certpath=%s\n",
+                    identity ? identity : "<null>", certpath);
+            stirshaken_res_t res = stirshaken_validate_identity_header_with_cert(identity, certpath);
+            WARNING("validation result is: %s\n", res == STIRSHAKEN_RES_OK ? "ok" : "failed");
+        } else if (currentAction->getActionType() == CAction::E_AT_STIRSHAKEN_VALIDATE) {
+            char* identity = get_header_content(msg, "identity:");
+
+            WARNING("validating stirshaken with identity '%s'\n",
+                    identity ? identity : "<null>");
+            stirshaken_res_t res = stirshaken_validate_identity_header(identity);
+            WARNING("validation result is: %s\n", res == STIRSHAKEN_RES_OK ? "ok" : "failed");
+#endif
+
 #ifdef PCAPPLAY
         } else if ((currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_AUDIO) ||
                    (currentAction->getActionType() == CAction::E_AT_PLAY_PCAP_IMAGE) ||

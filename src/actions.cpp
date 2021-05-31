@@ -151,6 +151,12 @@ void CAction::printInfo(char* buf, int len)
         snprintf(buf, len, "Type[%d] - divide varId[%s] varInId[%s] %s %lf", M_action, display_scenario->allocVars->getName(M_varId), display_scenario->allocVars->getName(M_varInId), comparatorToString(M_comp), M_doubleValue);
     } else if (M_action == E_AT_VAR_TO_DOUBLE) {
         snprintf(buf, len, "Type[%d] - toDouble varId[%s]", M_action, display_scenario->allocVars->getName(M_varId));
+#ifdef STIRSHAKEN
+    } else if (M_action == E_AT_STIRSHAKEN_VALIDATE_WITH_KEY) {
+        snprintf(buf, len, "Type[%d] - stirshaken_validate_with_key", M_action);
+    } else if (M_action == E_AT_STIRSHAKEN_VALIDATE_WITH_CERT) {
+        snprintf(buf, len, "Type[%d] - stirshaken_validate_with_cert", M_action);
+#endif
 #ifdef PCAPPLAY
     } else if ((M_action == E_AT_PLAY_PCAP_AUDIO) || (M_action == E_AT_PLAY_PCAP_IMAGE) || (M_action == E_AT_PLAY_PCAP_VIDEO)) {
         snprintf(buf, len, "Type[%d] - file[%s]", M_action, M_pcapArgs->file);
@@ -342,6 +348,13 @@ rtpecho_actinfo_t* CAction::getRTPEchoActInfo()
 rtpstream_actinfo_t* CAction::getRTPStreamActInfo()
 {
     return &M_rtpstream_actinfo;
+}
+#endif
+
+#ifdef STIRSHAKEN
+stirshaken_actinfo_t *CAction::getStirShakenActInfo()
+{
+    return &M_stirshaken_actinfo;
 }
 #endif
 
@@ -946,6 +959,26 @@ void CAction::setRTPStreamActInfo(rtpstream_actinfo_t *P_value)
 }
 #endif
 
+#ifdef STIRSHAKEN
+void CAction::setStirShakenActInfo(const char* P_value)
+{
+    char* param_str;
+    char* next_comma;
+
+    char val[256 + 1] = "";
+    if (strlen(P_value) >= sizeof(val)) {
+        ERROR("Parameter value '%s' for stirshaken validation is too long, maximum supported length %zu", P_value,
+              sizeof(val) - 1);
+    }
+    snprintf(M_stirshaken_actinfo.keypath, sizeof(M_stirshaken_actinfo.keypath), "%s", P_value);
+}
+
+void CAction::setStirShakenActInfo(stirshaken_actinfo_t *P_value)
+{
+    memcpy(&M_stirshaken_actinfo,P_value, sizeof(M_stirshaken_actinfo));
+}
+#endif
+
 void CAction::setScenario(scenario *     P_scenario)
 {
     M_scenario = P_scenario;
@@ -988,6 +1021,9 @@ void CAction::setAction(CAction P_action)
     setRTPEchoActInfo(&(P_action.M_rtpecho_actinfo));
     setRTPStreamActInfo(&(P_action.M_rtpstream_actinfo));
 #endif
+#ifdef STIRSHAKEN
+    setStirShakenActInfo(&(P_action.M_stirshaken_actinfo));
+#endif
 }
 
 CAction::CAction(scenario *scenario)
@@ -1023,6 +1059,10 @@ CAction::CAction(scenario *scenario)
 #ifdef RTP_STREAM
     memset(&M_rtpecho_actinfo, 0, sizeof(M_rtpecho_actinfo));
     memset(&M_rtpstream_actinfo, 0, sizeof(M_rtpstream_actinfo));
+#endif
+
+#ifdef STIRSHAKEN
+    memset(&M_stirshaken_actinfo, 0, sizeof(M_stirshaken_actinfo));
 #endif
 
     M_scenario     = scenario;
