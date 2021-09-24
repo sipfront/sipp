@@ -16,7 +16,7 @@ FROM debian:stable AS run-stage
 ADD . /src
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get -y install \
-    libncurses6 libpcap0.8 libgsl23 libmosquitto1 libssl1.1 \
+    libncurses6 libpcap0.8 libgslcblas0 libmosquitto1 libssl1.1 \
     uuid-runtime curl awscli jq gdb iptables mosquitto-clients 
 RUN curl -s https://a9b36f98258eaaf27ee1937c25aa1288116c782673335d9e@packagecloud.io/install/repositories/qxip/rtpagent/script.deb.sh | bash
 RUN apt-get -y install \
