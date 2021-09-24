@@ -396,6 +396,7 @@ struct sipp_option options_table[] = {
 
 #ifdef USE_MQTT
     {"", "MQTT options:", SIPP_HELP_TEXT_HEADER, NULL, 0},
+    {"mqtt_shutdelay", "Wait that many seconds on shutdown for MQTT to complete.", SIPP_OPTION_INT, &mqtt_shutdelay, 1},
     {"mqtt_stats", "Use MQTT instead of CSV for stats.", SIPP_OPTION_BOOL, &mqtt_stats, 1},
     {"mqtt_stats_topic", "Set the MQTT topic for publishing stats. Default is '/sipp/stats'", SIPP_OPTION_STRING, &mqtt_stats_topic, 1},
     {"mqtt_rttstats_topic", "Set the MQTT topic for publishing rtt stats. Default is '/sipp/rttstats'", SIPP_OPTION_STRING, &mqtt_rttstats_topic, 1},
@@ -411,6 +412,7 @@ struct sipp_option options_table[] = {
     {"mqtt_pass", "Set the password to authenticate at the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_pass, 1},
     {"mqtt_ca_file", "Set the path to the CA file when connecting via TLS to the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_ca_file, 1},
 #else
+    {"mqtt_shutdelay", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_stats", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_stats_topic", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_rttstats_topic", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
@@ -2184,12 +2186,11 @@ int main(int argc, char *argv[])
     // agranig: TODO: give it one more sec to send mqtt before closing
     // epoll... we should rather move mqtt to an entire new thread?
 #ifdef USE_MQTT
-    //WARNING("waiting for mqtt before quitting\n");
-    cerr << "waiting for mqtt before quitting" << endl;
-    mosquitto_loop_start(mqtt_handler);
-    sipp_usleep(3000000);
-    mosquitto_loop_stop(mqtt_handler, true);
-    cerr << "done waiting for mqtt before quitting" << endl;
+    if (mqtt_shutdelay) {
+        mosquitto_loop_start(mqtt_handler);
+        sipp_usleep(mqtt_shutdelay * 1000000);
+        mosquitto_loop_stop(mqtt_handler, true);
+    }
 #endif
 
     sipp_exit(EXIT_TEST_RES_UNKNOWN);

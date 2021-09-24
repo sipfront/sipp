@@ -250,9 +250,9 @@ void print_message_mqtt(struct timeval *currentTime, const char* cid, const char
     std::string strbuf = do_replace(std::string(msg), "\r?\n", "\\r\\n");
     strbuf = do_replace(strbuf, "\"", "\\\"");
 
-    if (quitting) {
-        return;
-    }
+    // if (quitting) {
+    //     return;
+    // }
 
     jsonData
         << "{"

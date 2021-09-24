@@ -249,6 +249,7 @@ MAYBE_EXTERN int                pmtu                    DEFVAL(0);
 MAYBE_EXTERN bool               gracefulclose           DEFVAL(true);
 #endif
 #ifdef USE_MQTT
+MAYBE_EXTERN int                mqtt_shutdelay          DEFVAL(0);
 MAYBE_EXTERN bool               mqtt_stats              DEFVAL(false);
 MAYBE_EXTERN const char *       mqtt_stats_topic        DEFVAL("/sipp/stats");
 MAYBE_EXTERN const char *       mqtt_rttstats_topic     DEFVAL("/sipp/rttstats");
