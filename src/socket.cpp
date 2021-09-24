@@ -574,7 +574,7 @@ void mqtt_cb_msg(struct mosquitto *mosq, void *userdata,
 
 void setup_mqtt_socket()
 {
-    int keepalive_seconds = 3;
+    int keepalive_seconds = 5;
     int ret;
 
     WARNING("setting up mqtt socket\n");
