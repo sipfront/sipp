@@ -1796,8 +1796,17 @@ bool call::process_unexpected(const char* msg)
 
 void call::abort()
 {
-    WARNING("Aborted call with Call-ID '%s'", id);
+    WARNING("Aborted call with Call-ID '%s'\n", id);
     abortCall(false);
+}
+
+void call::unpause()
+{
+    WARNING("Unpause call with Call-ID '%s'\n", id);
+
+    paused_until = 0;
+    next();
+    setRunning();
 }
 
 bool call::abortCall(bool writeLog)
@@ -1813,6 +1822,7 @@ bool call::abortCall(bool writeLog)
     } else {
         is_inv = false;
     }
+
     if ((creationMode != MODE_SERVER) && (msg_index > 0)) {
         if ((call_established == false) && (is_inv)) {
             src_recv = last_recv_msg ;

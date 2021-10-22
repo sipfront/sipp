@@ -64,6 +64,15 @@ void abort_all_tasks()
     }
 }
 
+void unpause_all_tasks()
+{
+    for (task_list::iterator task_it = all_tasks.begin();
+         task_it != all_tasks.end();
+         ++task_it) {
+        (*task_it)->unpause();
+    }
+}
+
 void dump_tasks()
 {
     WARNING("---- %zu Active Tasks ----", all_tasks.size());
@@ -154,6 +163,10 @@ void task::setPaused()
 void task::abort()
 {
     delete this;
+}
+
+void task::unpause()
+{
 }
 
 // Methods for the timewheel class

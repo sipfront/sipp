@@ -83,6 +83,7 @@ public:
     virtual unsigned int wake();
     virtual bool  abortCall(bool writeLog); // call aborted with BYE or CANCEL
     virtual void abort();
+    virtual void unpause();
 
     /* Dump call info to error log. */
     virtual void dump();

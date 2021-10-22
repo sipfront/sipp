@@ -90,6 +90,9 @@ public:
     /* Our abort action. */
     virtual void abort();
 
+    /* Unpause paused tasks. */
+    virtual void unpause();
+
     /* Dump task info to error log. */
     virtual void dump() = 0;
 
@@ -125,6 +128,7 @@ task_list * get_running_tasks();
 int expire_paused_tasks();
 int paused_tasks_count();
 void abort_all_tasks();
+void unpause_all_tasks();
 void dump_tasks();
 
 #endif

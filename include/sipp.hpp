@@ -221,6 +221,7 @@ MAYBE_EXTERN bool               periodic_rtd            DEFVAL(false);
 MAYBE_EXTERN const char       * stat_delimiter          DEFVAL(";");
 
 MAYBE_EXTERN bool               timeout_exit            DEFVAL(false);
+MAYBE_EXTERN bool               timeout_force_exit      DEFVAL(false);
 MAYBE_EXTERN bool               timeout_error           DEFVAL(false);
 
 MAYBE_EXTERN unsigned long      report_freq_dumpRtt     DEFVAL

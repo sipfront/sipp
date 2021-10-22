@@ -482,8 +482,13 @@ void timeout_alarm(int /*param*/)
     if (timeout_error) {
         ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)clock_tick / 1000LL));
     }
-    quitting = 21;
-    timeout_exit = true;
+
+    if (timeout_force_exit) {
+        quitting = 21;
+    } else {
+        quitting = 11;
+        timeout_exit = true;
+    }
 }
 
 /* Send loop & trafic generation*/
@@ -537,6 +542,14 @@ static void traffic_thread()
         if ((main_scenario->stats->GetStat(CStat::CPT_C_IncomingCallCreated) + main_scenario->stats->GetStat(CStat::CPT_C_OutgoingCallCreated)) >= stop_after) {
             quitting = 1;
         }
+
+        if (timeout_exit) {
+            unpause_all_tasks();
+            timeout_exit = false;
+            timeout_force_exit = true;
+            alarm(5);
+        }
+
         if (quitting) {
             if (quitting > 11) {
                 /* Force exit: abort all calls */
@@ -1160,7 +1173,7 @@ void sipp_exit(int rc)
         // the counter of failed calls. If there is 0 failed calls,
         // then everything is OK!
         if (counter_value_failed == 0) {
-            if (timeout_exit && counter_value_success < 1) {
+            if (timeout_force_exit && counter_value_success < 1) {
                 exit(EXIT_TEST_RES_INTERNAL);
             } else {
                 exit(EXIT_TEST_OK);
