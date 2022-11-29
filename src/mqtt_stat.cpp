@@ -201,7 +201,7 @@ void MQTTStat::dumpData ()
 
     ret = mosquitto_publish(mqtt_handler, NULL, mqtt_stats_topic,
                    jsonDataStr.length(), jsonDataStr.c_str(),
-                   2, false);
+                   mqtt_pub_qos, false);
     if (ret != MOSQ_ERR_SUCCESS && !quitting) {
         WARNING("MQTT: failed to publish stats: %s\n", mosquitto_strerror(ret));
     }
@@ -254,7 +254,7 @@ void MQTTStat::dumpDataRtt ()
 
     ret = mosquitto_publish(mqtt_handler, NULL, mqtt_rttstats_topic,
                    jsonDataStr.length(), jsonDataStr.c_str(),
-                   2, false);
+                   mqtt_pub_qos, false);
     if (ret != MOSQ_ERR_SUCCESS && !quitting) {
         WARNING("MQTT: failed to publish rtt stats: %s\n", mosquitto_strerror(ret));
     }
