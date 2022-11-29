@@ -411,6 +411,7 @@ struct sipp_option options_table[] = {
     {"mqtt_user", "Set the username to authenticate at the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_user, 1},
     {"mqtt_pass", "Set the password to authenticate at the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_pass, 1},
     {"mqtt_ca_file", "Set the path to the CA file when connecting via TLS to the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_ca_file, 1},
+    {"mqtt_tls_alpn", "Set the TLS ALPN for the connection to the MQTT broker.'", SIPP_OPTION_STRING, &mqtt_tls_alpn, 1},
 #else
     {"mqtt_shutdelay", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_stats", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
@@ -426,6 +427,7 @@ struct sipp_option options_table[] = {
     {"mqtt_user", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_pass", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
     {"mqtt_ca_file", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
+    {"mqtt_tls_alpn", NULL, SIPP_OPTION_NEED_MQTT, NULL, 1},
 #endif
 
 };

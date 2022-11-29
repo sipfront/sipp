@@ -303,7 +303,9 @@ void timewheel::add_paused_task(task *task, bool increment)
 void timewheel::remove_paused_task(task *task)
 {
     task_list *list = task->pauselist;
-    list->erase(task->pauseit);
+    if (list) {
+        list->erase(task->pauseit);
+    }
     count--;
 }
 

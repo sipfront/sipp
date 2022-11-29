@@ -602,6 +602,9 @@ void setup_mqtt_socket()
     if (mqtt_ca_file) {
         mosquitto_tls_set(mqtt_handler, mqtt_ca_file, NULL, NULL, NULL, NULL);
     }
+    if (mqtt_tls_alpn) {
+        mosquitto_string_option(mqtt_handler, MOSQ_OPT_TLS_ALPN, mqtt_tls_alpn);
+    }
     do {
         ret = mosquitto_connect(mqtt_handler, mqtt_host, mqtt_port, keepalive_seconds);
     } while (ret == MOSQ_ERR_ERRNO && errno == EINTR);
