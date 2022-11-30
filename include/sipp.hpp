@@ -251,6 +251,7 @@ MAYBE_EXTERN bool               gracefulclose           DEFVAL(true);
 #endif
 #ifdef USE_MQTT
 MAYBE_EXTERN int                mqtt_shutdelay          DEFVAL(0);
+MAYBE_EXTERN const char *       mqtt_client_id          DEFVAL(NULL);
 MAYBE_EXTERN bool               mqtt_stats              DEFVAL(false);
 MAYBE_EXTERN const char *       mqtt_stats_topic        DEFVAL("/sipp/stats");
 MAYBE_EXTERN const char *       mqtt_rttstats_topic     DEFVAL("/sipp/rttstats");
@@ -265,6 +266,7 @@ MAYBE_EXTERN int                mqtt_port               DEFVAL(1883);
 MAYBE_EXTERN const char *       mqtt_user               DEFVAL(NULL);
 MAYBE_EXTERN const char *       mqtt_pass               DEFVAL(NULL);
 MAYBE_EXTERN int                mqtt_pub_qos            DEFVAL(1);
+MAYBE_EXTERN int                mqtt_sub_qos            DEFVAL(1);
 MAYBE_EXTERN const char *       mqtt_ca_file            DEFVAL(NULL);
 MAYBE_EXTERN const char *       mqtt_tls_alpn           DEFVAL(NULL);
 MAYBE_EXTERN bool               mqtt_ready              DEFVAL(false);

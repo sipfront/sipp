@@ -529,7 +529,7 @@ void mqtt_cb_connect(struct mosquitto *mosq, void *userdata, int result)
     if (!result) {
         mqtt_ready = true;
         if (mqtt_ctrl) {
-            mosquitto_subscribe(mosq, NULL, mqtt_ctrl_topic, 2);
+            mosquitto_subscribe(mosq, NULL, mqtt_ctrl_topic, mqtt_sub_qos);
         }
     }
     else {
@@ -581,7 +581,7 @@ void setup_mqtt_socket()
 
     mosquitto_lib_init();
     // TODO: agranig: let clientid be passed via cmdline
-    mqtt_handler = mosquitto_new(NULL, true, NULL);
+    mqtt_handler = mosquitto_new(mqtt_client_id, true, NULL);
     if (!mqtt_handler) {
         ERROR_NO("Could not setup MQTT, out of memory!\n");
     }
