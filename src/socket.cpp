@@ -2513,7 +2513,7 @@ int open_connections()
         }
 
         /* Resolving the remote IP */
-        {
+        if (!use_remote_sending_addr) {
             fprintf(stderr, "Resolving remote host '%s'... ", remote_host);
 
             /* FIXME: add DNS SRV support using liburli? */
@@ -2531,6 +2531,9 @@ int open_connections()
                 sprintf(remote_ip_escaped, "[%s]", remote_ip);
             }
             fprintf(stderr, "Done.\n");
+        } else {
+            fprintf(stderr, "Skip resolving remote host '%s' due to using remote sending address... ", remote_host);
+            remote_sockaddr = remote_sending_sockaddr;
         }
     }
 
@@ -2743,10 +2746,6 @@ int open_connections()
             tcp_multiplex->set_bind_port(local_port);
         }
 
-        /* OJA FIXME: is it correct? */
-        if (use_remote_sending_addr) {
-            remote_sockaddr = remote_sending_sockaddr;
-        }
         sipp_customize_socket(tcp_multiplex);
 
         if (tcp_multiplex->connect(&remote_sockaddr)) {
