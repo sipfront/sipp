@@ -1058,7 +1058,9 @@ char * call::send_scene(int index, int *send_status, int *len)
     *L_ptr1 = '\0' ;
 
     if (strcmp(msg_name,"ACK") == 0) {
-        call_established = true ;
+        if (last_recv_reply_code >= 200 && last_recv_reply_code < 300) {
+            call_established = true ;
+        }
         ack_is_pending = false ;
     }
 
@@ -2853,7 +2855,7 @@ bool call::process_incoming(const char* msg, const struct sockaddr_storage* src)
             (msg[5] == '.') &&
             (msg[6] == '0')    ) {
 
-        reply_code = get_reply_code(msg);
+        reply_code = last_recv_reply_code = get_reply_code(msg);
         if (!reply_code) {
             if (!process_unexpected(msg)) {
                 return false; // Call aborted by unexpected message handling

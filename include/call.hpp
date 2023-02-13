@@ -146,6 +146,10 @@ protected:
     int            last_recv_index;
     char         * last_recv_msg;
 
+    /* Last received reply code (required to determine if a sent ACK should
+     * set the call_established flag */
+    int            last_recv_reply_code;
+
     /* Recv message characteristics when we sent a valid message
      *  (scneario, no retrans) just after a valid reception. This was
      * a cause relationship, so the next time this cookie will be recvd,
