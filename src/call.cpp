@@ -2184,6 +2184,8 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
                     dest += sprintf(dest, "%s", var->getMatchingValue());
                 } else if (var->isDouble()) {
                     dest += sprintf(dest, "%lf", var->getDouble());
+                } else if (var->isInt()) {
+                    dest += sprintf(dest, "%d", var->getInt());                    
                 } else if (var->isString()) {
                     dest += sprintf(dest, "%s", var->getString());
                 } else if (var->isBool()) {
@@ -3665,6 +3667,14 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
             } else {
                 WARNING("Invalid double conversion from $%d to $%d", currentAction->getVarInId(), currentAction->getVarId());
             }
+        } else if (currentAction->getActionType() == CAction::E_AT_VAR_TO_INT) {
+            int value;
+
+            if (M_callVariableTable->getVar(currentAction->getVarInId())->toInt(&value)) {
+                M_callVariableTable->getVar(currentAction->getVarId())->setInt(value);
+            } else {
+                WARNING("Invalid int conversion from $%d to $%d", currentAction->getVarInId(), currentAction->getVarId());
+            }            
         } else if (currentAction->getActionType() == CAction::E_AT_ASSIGN_FROM_SAMPLE) {
             double value = currentAction->getDistribution()->sample();
             M_callVariableTable->getVar(currentAction->getVarId())->setDouble(value);

@@ -147,6 +147,8 @@ void CAction::printInfo(char* buf, int len)
         snprintf(buf, len, "Type[%d] - divide varId[%s] varInId[%s] %s %lf", M_action, display_scenario->allocVars->getName(M_varId), display_scenario->allocVars->getName(M_varInId), comparatorToString(M_comp), M_doubleValue);
     } else if (M_action == E_AT_VAR_TO_DOUBLE) {
         snprintf(buf, len, "Type[%d] - toDouble varId[%s]", M_action, display_scenario->allocVars->getName(M_varId));
+    } else if (M_action == E_AT_VAR_TO_INT) {
+        snprintf(buf, len, "Type[%d] - toInt varId[%s]", M_action, display_scenario->allocVars->getName(M_varId));        
 #ifdef PCAPPLAY
     } else if ((M_action == E_AT_PLAY_PCAP_AUDIO) || (M_action == E_AT_PLAY_PCAP_IMAGE) || (M_action == E_AT_PLAY_PCAP_VIDEO)) {
         snprintf(buf, len, "Type[%d] - file[%s]", M_action, M_pcapArgs->file);

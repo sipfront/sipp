@@ -41,6 +41,8 @@ bool CCallVariable::isSet()
         return M_bool;
     } else if (M_type == E_VT_DOUBLE) {
         return M_double;
+    } else if (M_type == E_VT_INT) {
+        return getInt();
     }
     return (M_type != E_VT_UNDEFINED);
 }
@@ -48,6 +50,11 @@ bool CCallVariable::isSet()
 bool CCallVariable::isDouble()
 {
     return (M_type == E_VT_DOUBLE);
+}
+
+bool CCallVariable::isInt()
+{
+    return (M_type == E_VT_INT);
 }
 
 bool CCallVariable::isBool()
@@ -99,6 +106,20 @@ double CCallVariable::getDouble()
     return(M_double);
 }
 
+void CCallVariable::setInt(int val)
+{
+    M_type = E_VT_INT;
+    M_double = (double)val;
+}
+
+int CCallVariable::getInt()
+{
+    if (M_type != E_VT_INT) {
+        return 0;
+    }
+    return((int)M_double);
+}
+
 void CCallVariable::setString(char *P_val)
 {
     M_type = E_VT_STRING;
@@ -141,8 +162,47 @@ bool CCallVariable::toDouble(double *newValue)
     case E_VT_DOUBLE:
         *newValue = getDouble();
         break;
+    case E_VT_INT:
+        *newValue = (double)getInt();
+        break;        
     case E_VT_BOOL:
         *newValue = (double)getBool();
+        break;
+    default:
+        return false;
+    }
+    return true;
+}
+
+/* Convert this variable to an int. Returns true on success, false on failure. */
+bool CCallVariable::toInt(int *newValue)
+{
+    char *p;
+
+    switch(M_type) {
+    case E_VT_REGEXP:
+        if(M_nbOfMatchingValue < 1) {
+            return false;
+        }
+        *newValue = (int)strtod(M_matchingValue, &p);
+        if (*p) {
+            return false;
+        }
+        break;
+    case E_VT_STRING:
+        *newValue = (int)strtod(M_stringValue, &p);
+        if (*p) {
+            return false;
+        }
+        break;
+    case E_VT_DOUBLE:
+        *newValue = (int)getDouble();
+        break;
+    case E_VT_INT:
+        *newValue = getInt();
+        break;        
+    case E_VT_BOOL:
+        *newValue = (int)getBool();
         break;
     default:
         return false;

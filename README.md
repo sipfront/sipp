@@ -1,3 +1,16 @@
+# Sipfront Notes
+
+How to build:
+
+* Run `./agranig-dev-setup.sh` to run a Docker build environment
+* Once the command is done, you're placed within the build environment
+* Run `cd /sipp` to switch to the source
+* Run `make` to build
+* Outside the Docker container, edit the source as needed, rebuild as needed, and copy the resulting
+  *sipp* binary to the agent repo path *src/external/usr/local/bin/sipp*.
+
+# Original Readme starts here
+
 ![C/C++ CI](https://github.com/agranig/sipp/workflows/C/C++%20CI/badge.svg?branch=agranig%2Fmqttstats)
 
 SIPp - a SIP protocol test tool

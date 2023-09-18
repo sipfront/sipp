@@ -67,6 +67,7 @@ public:
         E_AT_VAR_DIVIDE,
         E_AT_VAR_TEST,
         E_AT_VAR_TO_DOUBLE,
+        E_AT_VAR_TO_INT,
         E_AT_VAR_STRCMP,
         E_AT_VAR_TRIM,
         E_AT_VERIFY_AUTH,

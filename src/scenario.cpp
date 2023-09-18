@@ -1521,6 +1521,10 @@ void scenario::parseAction(CActions *actions)
             tmpAction->setActionType(CAction::E_AT_VAR_TO_DOUBLE);
             tmpAction->setVarId(xp_get_var("assign_to", "todouble"));
             tmpAction->setVarInId(xp_get_var("variable", "todouble"));
+        } else if(!strcmp(actionElem, "toint")) {
+            tmpAction->setActionType(CAction::E_AT_VAR_TO_INT);
+            tmpAction->setVarId(xp_get_var("assign_to", "toint"));
+            tmpAction->setVarInId(xp_get_var("variable", "toint"));            
         } else if(!strcmp(actionElem, "test")) {
             if (xp_get_value("check_it")) {
                 tmpAction->setCheckIt(xp_get_bool("check_it", "test"));

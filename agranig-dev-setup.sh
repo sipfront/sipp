@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker run -it -v $(pwd):/sipp debian:stable /bin/bash /sipp/agranig-dev-helper.sh
+docker run -it -v $(pwd):/sipp debian:bullseye /bin/bash /sipp/agranig-dev-helper.sh

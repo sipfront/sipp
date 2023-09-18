@@ -40,6 +40,7 @@ typedef std::map<int, int> int_int_map;
 enum T_VarType {
     E_VT_REGEXP = 0,
     E_VT_DOUBLE,
+    E_VT_INT,
     E_VT_BOOL,
     E_VT_STRING,
     E_VT_UNDEFINED
@@ -50,6 +51,7 @@ class CCallVariable
 public:
     bool isSet();
     bool isDouble();
+    bool isInt();
     bool isBool();
     bool isRegExp();
     bool isString();
@@ -69,12 +71,18 @@ public:
     void setDouble(double val);
     double getDouble();
 
+    /* When the variable is used for an int, these functions should be called. */
+    void setInt(int val);
+    int getInt();    
+
     /* When the variable is used for a bool, these functions should be called. */
     void setBool(bool val);
     bool getBool();
 
     /* Cast this to a double variable, return the result in newValue. */
     bool toDouble(double *newValue);
+    /* Cast this to a int variable, return the result in newValue. */
+    bool toInt(int *newValue);
 
     // constructor and destructor
     CCallVariable();
