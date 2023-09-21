@@ -88,8 +88,12 @@ void print_count_mqtt()
             if (lose_packets) {
                 jsonData << "," << JQV(Lost, curmsg->nb_lost);
             }
-        } else if (curmsg->recv_response || curmsg->recv_request) {
-            if (curmsg->recv_response) {
+        } else if (curmsg->recv_response || curmsg->recv_response_str || curmsg->recv_request) {
+            if (curmsg->recv_response_str) {
+                jsonData 
+                    << JQC(Type, "recvres")
+                    << JQC(Name, curmsg->recv_response_str);
+            } else if (curmsg->recv_response) {
                 jsonData 
                     << JQC(Type, "recvres")
                     << JQC(Name, curmsg->recv_response);

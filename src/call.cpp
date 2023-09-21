@@ -2739,23 +2739,39 @@ bool call::matches_scenario(unsigned int index, int reply_code, char * request, 
         } else {
             return !strcmp(curmsg->recv_request, request);
         }
-    } else if (curmsg->recv_response && (curmsg->recv_response == reply_code)) {
-        /* This is a potential candidate, we need to match transactions. */
-        if (curmsg->response_txn) {
-            if (transactions[curmsg->response_txn - 1].txnID && !strcmp(transactions[curmsg->response_txn - 1].txnID, txn)) {
+    } else if (curmsg->recv_response > 0 || curmsg->recv_response_str != NULL) {
+        bool regex_matched = false;
+        if (curmsg->recv_response_str != NULL) {
+            char reply_code_str[4] = "";
+            snprintf(reply_code_str, 4, "%d", reply_code);
+            if (curmsg->regexp_compile == NULL) {
+                regex_t *re = new regex_t;
+                
+                if (regcomp(re, curmsg->recv_response_str, REGCOMP_PARAMS|REG_NOSUB)) {
+                    ERROR("Invalid regular expression for index %d: %s", index, curmsg->recv_response_str);
+                }
+                curmsg->regexp_compile = re;
+            }
+            regex_matched = (regexec(curmsg->regexp_compile, reply_code_str, (size_t)0, NULL, REGEXEC_PARAMS) == 0) ? true : false;
+        }
+        if (curmsg->recv_response == reply_code || regex_matched) {
+            /* This is a potential candidate, we need to match transactions. */
+            if (curmsg->response_txn) {
+                if (transactions[curmsg->response_txn - 1].txnID && !strcmp(transactions[curmsg->response_txn - 1].txnID, txn)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else if (index == 0) {
+                /* Always true for the first message. */
+                return true;
+            } else if (curmsg->recv_response_for_cseq_method_list &&
+                       strstr(curmsg->recv_response_for_cseq_method_list, responsecseqmethod)) {
+                /* If we do not have a transaction defined, we just check the CSEQ method. */
                 return true;
             } else {
                 return false;
             }
-        } else if (index == 0) {
-            /* Always true for the first message. */
-            return true;
-        } else if (curmsg->recv_response_for_cseq_method_list &&
-                   strstr(curmsg->recv_response_for_cseq_method_list, responsecseqmethod)) {
-            /* If we do not have a transaction defined, we just check the CSEQ method. */
-            return true;
-        } else {
-            return false;
         }
     }
 

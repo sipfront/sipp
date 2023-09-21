@@ -116,9 +116,13 @@ void print_count_file(FILE* f, int header)
                     fprintf(f, "%lu%s", curmsg->nb_lost, stat_delimiter);
                 }
             }
-        } else if (curmsg->recv_response) {
+        } else if (curmsg->recv_response || curmsg->recv_response_str) {
             if (header) {
-                sprintf(temp_str, "%u_%d_", index, curmsg->recv_response);
+                if (curmsg->recv_response_str) {
+                    sprintf(temp_str, "%u_%s_", index, curmsg->recv_response_str);
+                } else {
+                    sprintf(temp_str, "%u_%d_", index, curmsg->recv_response);
+                }
 
                 fprintf(f, "%sRecv%s", temp_str, stat_delimiter);
                 fprintf(f, "%sRetrans%s", temp_str, stat_delimiter);

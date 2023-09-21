@@ -523,13 +523,27 @@ void ScreenPrinter::draw_scenario_screen()
                         ? std::to_string(curmsg->nb_lost).c_str()
                         : "");
             }
-        } else if (curmsg->recv_response) {
+        } else if (curmsg->recv_response || curmsg->recv_response_str) {
             if (creationMode == MODE_SERVER) {
-                buf_len += snprintf(buf + buf_len, bufsiz - buf_len,
-                                    "  ----------> %-10d ", curmsg->recv_response);
+                if (curmsg->recv_response_str) {
+                    buf_len += snprintf(buf + buf_len, bufsiz - buf_len,
+                                        "  ----------> %-10s ",
+                                        curmsg->recv_response_str);
+                } else {
+                    buf_len += snprintf(buf + buf_len, bufsiz - buf_len,
+                                        "  ----------> %-10d ",
+                                        curmsg->recv_response);
+                }
             } else {
-                buf_len += snprintf(buf + buf_len, bufsiz - buf_len,
-                                    "  %10d <---------- ", curmsg->recv_response);
+                if (curmsg->recv_response_str) {
+                    buf_len += snprintf(buf + buf_len, bufsiz - buf_len,
+                                        "  %10s <---------- ",
+                                        curmsg->recv_response_str);
+                } else {
+                    buf_len += snprintf(buf + buf_len, bufsiz - buf_len,
+                                        "  %10d <---------- ",
+                                        curmsg->recv_response);
+                }
             }
 
             if (curmsg->start_rtd) {

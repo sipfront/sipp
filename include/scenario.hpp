@@ -92,6 +92,7 @@ public:
 
     /* If this is a recv */
     int            recv_response;
+    char         * recv_response_str;
     char         * recv_request;
     int            optional;
     bool           advance_state;
