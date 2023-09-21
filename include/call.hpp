@@ -104,6 +104,11 @@ public:
         return last_recv_msg;
     };
 
+    virtual void setCSeq(int cseq);
+    virtual int getCSeq() {
+        return cseq;
+    };
+
 private:
     /* This is the core constructor function. */
     void init(scenario * call_scenario, SIPpSocket *socket, struct sockaddr_storage *dest, const char * p_id, int userId, bool ipv6, bool isAutomatic, bool isInitCall);

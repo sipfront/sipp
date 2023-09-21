@@ -332,38 +332,58 @@ call::call(scenario * call_scenario, SIPpSocket *socket, struct sockaddr_storage
 call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest)
 {
     static char call_id[MAX_HEADER_LEN];
-
     const char * src = call_id_string;
     int count = 0;
 
-    if(!next_number) {
-        next_number ++;
-    }
+    const char *reused_cid = NULL;
 
-    while (*src && count < MAX_HEADER_LEN-1) {
-        if (*src == '%') {
-            ++src;
-            switch(*src++) {
-            case 'u':
-                count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%u", next_number);
-                break;
-            case 'p':
-                count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%u", pid);
-                break;
-            case 's':
-                count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%s", local_ip);
-                break;
-            default:      // treat all unknown sequences as %%
-                call_id[count++] = '%';
-                break;
-            }
-        } else {
-            call_id[count++] = *src++;
+    if (reuse_users_callid) {
+        user_cid_map::iterator it = userCidMap.find(userId);
+        if (it != userCidMap.end()) {
+            reused_cid = it->second;
+        }
+        if (reused_cid) {
+            strncpy(call_id, reused_cid, MAX_HEADER_LEN);
         }
     }
-    call_id[count] = 0;
 
-    return new call(main_scenario, NULL, dest, call_id, userId, ipv6, false /* Not Auto. */, false);
+    if (!reused_cid) {
+        if(!next_number) {
+            next_number ++;
+        }
+
+        while (*src && count < MAX_HEADER_LEN-1) {
+            if (*src == '%') {
+                ++src;
+                switch(*src++) {
+                case 'u':
+                    count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%u", next_number);
+                    break;
+                case 'p':
+                    count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%u", pid);
+                    break;
+                case 's':
+                    count += snprintf(&call_id[count], MAX_HEADER_LEN-count-1,"%s", local_ip);
+                    break;
+                default:      // treat all unknown sequences as %%
+                    call_id[count++] = '%';
+                    break;
+                }
+            } else {
+                call_id[count++] = *src++;
+            }
+        }
+        call_id[count] = 0;
+    }
+
+    call *new_call = new call(main_scenario, NULL, dest, call_id, userId, ipv6, false /* Not Auto. */, false);
+    if (reuse_users_callid) {
+        if (!reused_cid) {
+            userCidMap[userId] = strdup(call_id);
+        }
+    }
+
+    return new_call;
 }
 
 
@@ -406,7 +426,12 @@ void call::init(scenario * call_scenario, SIPpSocket *socket, struct sockaddr_st
     call_established=false ;
     ack_is_pending=false ;
     last_recv_msg = NULL;
-    cseq = base_cseq;
+
+    if (reuse_users_callid && userId > 0 && userCseqMap[userId]) {
+        cseq = userCseqMap[userId];
+    } else {
+        cseq = userCseqMap[userId] = base_cseq;
+    }
     nb_last_delay = 0;
     use_ipv6 = ipv6;
     queued_msg = NULL;
@@ -1322,7 +1347,7 @@ bool call::executeMessage(message *curmsg)
         if (!curmsg->send_scheme->isAck() &&
                 !curmsg->send_scheme->isCancel() &&
                 !curmsg->send_scheme->isResponse()) {
-            ++cseq;
+            setCSeq(cseq + 1);
             incr_cseq = 1;
         }
 
@@ -1334,7 +1359,9 @@ bool call::executeMessage(message *curmsg)
         }
 
         if(send_status < 0 && errno == EWOULDBLOCK) {
-            if (incr_cseq) --cseq;
+            if (incr_cseq) {
+                setCSeq(cseq - 1);
+            }
             /* Have we set the timeout yet? */
             if (send_timeout) {
                 /* If we have actually timed out. */
@@ -2741,6 +2768,14 @@ void call::queue_up(const char* msg)
     queued_msg = strdup(msg);
 }
 
+void call::setCSeq(int cseq)
+{
+    this->cseq = cseq;
+    if (reuse_users_callid) {
+        userCseqMap[userId] = cseq;
+    }
+}
+
 bool call::process_incoming(const char* msg, const struct sockaddr_storage* src)
 {
     int             reply_code = 0;
@@ -3093,7 +3128,9 @@ bool call::process_incoming(const char* msg, const struct sockaddr_storage* src)
 
     if (*request) { // update [cseq] with received CSeq
         unsigned long int rcseq = get_cseq_value(msg);
-        if (rcseq > cseq) cseq = rcseq;
+        if (rcseq > cseq) {
+            setCSeq(rcseq);
+        }
     }
 
     /* This is an ACK/PRACK or a response, and its index is greater than the

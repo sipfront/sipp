@@ -118,6 +118,7 @@ struct sipp_option {
 #define SIPP_OPTION_PLUGIN        38
 #define SIPP_OPTION_NEED_SCTP     39
 #define SIPP_OPTION_NEED_MQTT     40
+#define SIPP_OPTION_REUSE_USER_CALLID 41
 #define SIPP_HELP_TEXT_HEADER    255
 
 /* Put each option, its help text, and type in this table. */
@@ -307,6 +308,7 @@ struct sipp_option options_table[] = {
      "  (3 * call_duration (s) * rate).", SIPP_OPTION_LIMIT, NULL, 1},
     {"m", "Stop the test and exit when 'calls' calls are processed", SIPP_OPTION_LONG, &stop_after, 1},
     {"users", "Instead of starting calls at a fixed rate, begin 'users' calls at startup, and keep the number of calls constant.", SIPP_OPTION_USERS, NULL, 1},
+    {"reuse_user_callid", "When in user mode, re-use the call-id for all calls (used for refreshing registrations).", SIPP_OPTION_REUSE_USER_CALLID, NULL, 1},
 
 
     {"", "Retransmission and timeout options:", SIPP_HELP_TEXT_HEADER, NULL, 0},
@@ -1665,6 +1667,10 @@ int main(int argc, char *argv[])
                 users = open_calls_allowed = get_long(argv[argi], argv[argi - 1]);
                 open_calls_user_setting = 1;
                 break;
+            case SIPP_OPTION_REUSE_USER_CALLID:
+                reuse_users_callid = true;
+                break;
+
             case SIPP_OPTION_KEY:
                 REQUIRE_ARG();
                 REQUIRE_ARG();

@@ -364,6 +364,10 @@ MAYBE_EXTERN AllocVariableTable *globalVariables        DEFVAL(NULL);
 MAYBE_EXTERN AllocVariableTable *userVariables          DEFVAL(NULL);
 typedef std::map<int, VariableTable *> int_vt_map;
 MAYBE_EXTERN int_vt_map         userVarMap;
+typedef std::map<int, const char *> user_cid_map;
+MAYBE_EXTERN user_cid_map        userCidMap;
+typedef std::map<int, int> user_cseq_map;
+MAYBE_EXTERN user_cseq_map       userCseqMap;
 
 MAYBE_EXTERN SIPpSocket* new_sipp_socket(bool use_ipv6, int transport);
 MAYBE_EXTERN int      sipp_bind_socket(SIPpSocket *socket, struct sockaddr_storage *saddr, int *port);
@@ -373,6 +377,8 @@ MAYBE_EXTERN int      select_socket       DEFVAL(0);
 MAYBE_EXTERN bool     socket_close        DEFVAL(true);
 MAYBE_EXTERN bool     test_socket         DEFVAL(true);
 MAYBE_EXTERN bool     maxSocketPresent    DEFVAL(false);
+
+MAYBE_EXTERN bool     reuse_users_callid  DEFVAL(false);
 
 #include "time.hpp"
 
