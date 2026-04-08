@@ -133,10 +133,10 @@ void free_pcaps(pcap_pkts* pkts)
     free(pkts);
 }
 
-int parse_dtmf_play_args(const char* buffer, pcap_pkts* pkts, uint16_t start_seq_no)
+int parse_dtmf_play_args(const char* buffer, pcap_pkts* pkts, uint16_t start_seq_no, uint8_t payload_type)
 {
     pkts->file = strdup(buffer);
-    return prepare_dtmf(pkts->file, pkts, start_seq_no);
+    return prepare_dtmf(pkts->file, pkts, start_seq_no, payload_type);
 }
 
 void hexdump(char *p, int s)

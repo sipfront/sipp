@@ -198,6 +198,30 @@ void call::get_remote_media_addr(std::string const &msg)
     hasMediaInformation = 1;
     const int family = media_ip_is_ipv6 ? AF_INET6 : AF_INET;
 
+    /* Learn telephone-event payload type (RFC2833 / RFC4733) from remote SDP when present.
+     * This allows play_dtmf-generated RTP packets to match the negotiated PT. */
+    {
+        std::string::size_type pos = 0;
+        while ((pos = msg.find("a=rtpmap:", pos)) != std::string::npos) {
+            pos += strlen("a=rtpmap:");
+            std::string::size_type endpt = msg.find_first_of(" \r\n", pos);
+            if (endpt == std::string::npos || endpt == pos) {
+                continue;
+            }
+            int pt = ::atoi(msg.substr(pos, endpt - pos).c_str());
+            std::string::size_type codec = msg.find_first_not_of(" ", endpt);
+            if (codec == std::string::npos) {
+                continue;
+            }
+            if (msg.compare(codec, strlen("telephone-event/"), "telephone-event/") == 0) {
+                if (pt >= 0 && pt <= 127) {
+                    dtmf_payload_type = static_cast<uint8_t>(pt);
+                }
+                break;
+            }
+        }
+    }
+
     std::string port = find_in_sdp("m=audio ", msg);
     if (!port.empty()) {
         gai_getsockaddr(&play_args_a.to, host.c_str(), port.c_str(),
@@ -450,6 +474,7 @@ void call::init(scenario * call_scenario, SIPpSocket *socket, struct sockaddr_st
     hasMediaInformation = 0;
     play_args_a.last_seq_no = 1200;
     play_args_v.last_seq_no = 2400;
+    dtmf_payload_type = 101;
 #endif
 
     call_remote_socket = NULL;
@@ -3824,7 +3849,7 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
             if (currentAction->getActionType() == CAction::E_AT_PLAY_DTMF) {
                 char* digits = createSendingMessage(currentAction->getMessage(), -2 /* do not add crlf */);
                 play_args->pcap = (pcap_pkts *) malloc(sizeof(pcap_pkts));
-                play_args->last_seq_no += parse_dtmf_play_args(digits, play_args->pcap, play_args->last_seq_no);
+                play_args->last_seq_no += parse_dtmf_play_args(digits, play_args->pcap, play_args->last_seq_no, dtmf_payload_type);
                 play_args->free_pcap_when_done = 1;
             } else {
                 play_args->pcap = currentAction->getPcapPkts();
