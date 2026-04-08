@@ -177,6 +177,7 @@ protected:
     play_args_t play_args_a;
     play_args_t play_args_i;
     play_args_t play_args_v;
+    uint8_t dtmf_payload_type;
 #endif
 
 #ifdef RTP_STREAM
