@@ -5422,10 +5422,17 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
         } else if (currentAction->getActionType() == CAction::E_AT_CURL) {
             SendingMessage *data = currentAction->getMessage(1);
             SendingMessage *content_type = currentAction->getMessage(2);
-            sipp_curl((curl_method_t)currentAction->getCurlMethod(),
-                      createSendingString(currentAction->getMessage(0)),
-                      data != nullptr, data ? createSendingString(data) : "",
-                      content_type ? createSendingString(content_type) : "");
+            const std::string url = createSendingString(currentAction->getMessage(0));
+            const std::string body = data ? createSendingString(data) : "";
+            if (url.length() >= SIPP_MAX_MSG_SIZE || body.length() >= SIPP_MAX_MSG_SIZE) {
+                /* Cut where a rendered string ends: the start of a body
+                 * is not the body, and a server may take it for one. */
+                WARNING("curl: the %s is longer than %d bytes, the request is not made",
+                        body.length() >= SIPP_MAX_MSG_SIZE ? "body" : "url", SIPP_MAX_MSG_SIZE - 1);
+            } else {
+                sipp_curl((curl_method_t)currentAction->getCurlMethod(), url, data != nullptr, body,
+                          content_type ? createSendingString(content_type) : "");
+            }
 #endif
         } else if (currentAction->getActionType() == CAction::E_AT_LOG_WARNING) {
             WARNING("%s", createSendingString(currentAction->getMessage()).c_str());
