@@ -255,7 +255,8 @@ void mqtt_setup()
         if (mqtt_subscribe_result != MOSQ_ERR_SUCCESS) {
             int result = mqtt_subscribe_result;
             mqtt_shutdown();
-            ERROR("MQTT: could not subscribe to the control topic '%s': %s", mqtt_ctrl_topic, mosquitto_strerror(result));
+            ERROR("MQTT: could not subscribe to the control topic '%s': %s", mqtt_ctrl_topic,
+                  mosquitto_strerror(result));
         }
         /* Handed over is not granted: a run that cannot be stopped from
          * afar must not start as if it could. The broker's answer is
@@ -267,10 +268,11 @@ void mqtt_setup()
         if (subscription != MQTT_SUBSCRIPTION_GRANTED) {
             mqtt_shutdown();
             if (subscription == MQTT_SUBSCRIPTION_REFUSED) {
-                ERROR("MQTT: the broker '%s:%d' refused the subscription to the control topic '%s'",
-                      mqtt_host, mqtt_port, mqtt_ctrl_topic);
+                ERROR("MQTT: the broker '%s:%d' refused the subscription to the control topic '%s'", mqtt_host,
+                      mqtt_port, mqtt_ctrl_topic);
             }
-            ERROR("MQTT: no answer from the broker '%s:%d' to the subscription to the control topic '%s' within %d seconds",
+            ERROR("MQTT: no answer from the broker '%s:%d' to the subscription to the control topic '%s' within %d "
+                  "seconds",
                   mqtt_host, mqtt_port, mqtt_ctrl_topic, mqtt_connect_timeout);
         }
         mqtt_subscription_lost = false;
@@ -327,17 +329,19 @@ void mqtt_poll()
     }
     unsigned long oversized = mqtt_control_oversized.exchange(0);
     if (oversized) {
-        WARNING("MQTT: %lu control messages dropped, they were longer than %lu bytes",
-                oversized, (unsigned long)MQTT_CONTROL_MESSAGE_MAX);
+        WARNING("MQTT: %lu control messages dropped, they were longer than %lu bytes", oversized,
+                (unsigned long)MQTT_CONTROL_MESSAGE_MAX);
     }
     int subscribe_failed = mqtt_subscribe_failed.exchange(0);
     if (subscribe_failed) {
         WARNING("MQTT: could not subscribe to the control topic '%s' after connecting again: %s, "
-                "control messages do not arrive any more", mqtt_ctrl_topic, mosquitto_strerror(subscribe_failed));
+                "control messages do not arrive any more",
+                mqtt_ctrl_topic, mosquitto_strerror(subscribe_failed));
     }
     if (mqtt_subscription_lost.exchange(false)) {
         WARNING("MQTT: the broker '%s:%d' refused the subscription to the control topic '%s' after connecting again, "
-                "control messages do not arrive any more", mqtt_host, mqtt_port, mqtt_ctrl_topic);
+                "control messages do not arrive any more",
+                mqtt_host, mqtt_port, mqtt_ctrl_topic);
     }
     for (const std::string &message : messages) {
         process_control_message(message.data(), message.length());
