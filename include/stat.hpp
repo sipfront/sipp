@@ -32,6 +32,7 @@
 
 #include "config.h"
 #include <ctime>
+#include <utility>
 #include <vector>
 #include <string>
 #include <sys/time.h>
@@ -478,6 +479,11 @@ private:
     T_pValue_rtt             M_dumpRespTime              ;
     unsigned int             M_counterDumpRespTime       ;
     unsigned long            M_report_freq_dumpRtt       ;
+    /* -mqtt_stats: the response times are kept as they were measured, the
+     * timer and its milliseconds, for mqtt_stat.cpp to take; their file is
+     * not written. */
+    bool M_captureRtt = false;
+    std::vector<std::pair<int, double>> M_capturedRtt;
 
     /**
      * initRepartition

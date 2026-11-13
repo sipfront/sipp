@@ -806,6 +806,7 @@ struct sipp_option options_table[] = {
     {"mqtt_stats_topic", "Set the MQTT topic the statistics are published to. Default is '/sipp/stats'.", SIPP_OPTION_STRING, &mqtt_stats_topic, 1},
     {"mqtt_countstats_topic", "Set the MQTT topic the message counts are published to. Default is '/sipp/countstats'.", SIPP_OPTION_STRING, &mqtt_countstats_topic, 1},
     {"mqtt_codestats_topic", "Set the MQTT topic the response codes of unexpected messages are published to. Default is '/sipp/codestats'.", SIPP_OPTION_STRING, &mqtt_codestats_topic, 1},
+    {"mqtt_rttstats_topic", "Set the MQTT topic the response times are published to when -trace_rtt is given with -mqtt_stats: per -fd interval and timer, how many there were and their minimum, mean, median, 90th, 95th and 99th percentile and maximum. The -trace_rtt file is not written then. Default is '/sipp/rttstats'.", SIPP_OPTION_STRING, &mqtt_rttstats_topic, 1},
     {"mqtt_ctrl", "Take control messages from the MQTT broker as from the control socket (-cp): SIPp subscribes to -mqtt_ctrl_topic, and each message is a key, such as 'q', or 'c' and a command, such as 'cset rate 10'.", SIPP_OPTION_BOOL, &mqtt_ctrl, 1},
     {"mqtt_ctrl_topic", "Set the MQTT topic control messages are taken from. Default is '/sipp/ctrl'.", SIPP_OPTION_STRING, &mqtt_ctrl_topic, 1},
     {"mqtt_sub_qos", "Set the QoS of the subscription to the control topic: 0, 1 or 2. Default is 1.", SIPP_OPTION_INT, &mqtt_sub_qos, 1},
@@ -829,6 +830,7 @@ struct sipp_option options_table[] = {
     {"mqtt_stats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_countstats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_codestats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_rttstats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_ctrl", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_ctrl_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_sub_qos", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
@@ -2627,6 +2629,11 @@ int main(int argc, char *argv[])
                                   report_freq_dumpRtt);
             }
         }
+#ifdef USE_MQTT
+        /* Before a scenario's <init> runs, which can measure the first
+         * response time. The broker is connected later, after -bg forked. */
+        mqtt_stats_init();
+#endif
     }
 
     if (rate_increase_freq == 0) {

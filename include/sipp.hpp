@@ -253,6 +253,10 @@ MAYBE_EXTERN bool               rfc3339                 DEFVAL(false);
 MAYBE_EXTERN bool               periodic_rtd            DEFVAL(false);
 MAYBE_EXTERN const char       * stat_delimiter          DEFVAL(";");
 
+/* Set when the response times of -trace_rtt go to MQTT and not to a file
+ * (never without USE_MQTT). */
+MAYBE_EXTERN bool               mqtt_rtt_capture        DEFVAL(false);
+
 #ifdef USE_MQTT
 /* MQTT (mqtt.hpp): the broker, and what is published where. */
 MAYBE_EXTERN bool               mqtt_stats              DEFVAL(false);
@@ -270,6 +274,7 @@ MAYBE_EXTERN int                mqtt_shutdelay          DEFVAL(3);
 MAYBE_EXTERN const char       * mqtt_stats_topic        DEFVAL("/sipp/stats");
 MAYBE_EXTERN const char       * mqtt_countstats_topic   DEFVAL("/sipp/countstats");
 MAYBE_EXTERN const char       * mqtt_codestats_topic    DEFVAL("/sipp/codestats");
+MAYBE_EXTERN const char       * mqtt_rttstats_topic     DEFVAL("/sipp/rttstats");
 MAYBE_EXTERN bool               mqtt_ctrl               DEFVAL(false);
 MAYBE_EXTERN const char       * mqtt_ctrl_topic         DEFVAL("/sipp/ctrl");
 MAYBE_EXTERN int                mqtt_sub_qos            DEFVAL(1);

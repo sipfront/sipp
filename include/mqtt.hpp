@@ -45,6 +45,10 @@
  *                           per message of the scenario.
  *   -mqtt_codestats_topic   the response codes of the unexpected messages
  *                           since the last interval (-trace_error_codes).
+ *   -mqtt_rttstats_topic    with -trace_rtt: the response times of the interval,
+ *                           per timer, as a count and percentiles -- not the
+ *                           single times the file lists, of which a load test
+ *                           has thousands a second.
  *
  * Remote control (-mqtt_ctrl)
  *
@@ -91,6 +95,11 @@ bool mqtt_active();
  * main loop on every pass; does nothing without -mqtt_ctrl. */
 void mqtt_poll();
 
+/* Prepare what mqtt_report_stats() publishes: call once, when the scenarios
+ * have their statistics and before anything of them runs (an <init> can
+ * measure a response time). Needs no connection. */
+void mqtt_stats_init();
+
 /* Publish the statistics, the message counts and the error codes of the main
  * scenario. Called by the statistics task every -fd interval and at exit. */
 void mqtt_report_stats();
@@ -124,6 +133,11 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
  * {"<column>":"<value>",...}. Columns without a name are left out; a data
  * line shorter than the header gives empty strings. */
 std::string mqtt_csv_to_json(const std::string &header, const std::string &row, const std::string &delimiter);
+
+/* Response times, each the name of its timer and its milliseconds, as the
+ * "ResponseTimes" array: one object per timer, in the order the timers
+ * first appear, with Count, Min, Mean, P50, P90, P95, P99 and Max. */
+std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, double>> &times);
 
 /* The limit on the errors that are published, and the count of those it
  * held back. Not synchronized: mqtt_publish_error() keeps one behind its
