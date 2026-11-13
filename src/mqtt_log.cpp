@@ -35,10 +35,34 @@
 #include "mqtt.hpp"
 
 static std::mutex error_mutex;
-static unsigned long error_total = 0;
-static unsigned long error_suppressed = 0;
-static time_t error_second = 0;
-static int error_second_count = 0;
+static MqttErrorLimit error_limit;
+
+bool MqttErrorLimit::admit(time_t second, bool fatal, int rate)
+{
+    total_++;
+    if (fatal || rate <= 0) {
+        return true;
+    }
+    if (second != second_) {
+        second_ = second;
+        second_count_ = 0;
+    }
+    if (second_count_ >= rate) {
+        suppressed_++;
+        return false;
+    }
+    second_count_++;
+    return true;
+}
+
+void MqttErrorLimit::published(bool taken)
+{
+    if (taken) {
+        suppressed_ = 0;
+    } else {
+        suppressed_++;
+    }
+}
 
 static std::string member(const char *name, const std::string &value, bool last = false)
 {
@@ -77,34 +101,22 @@ bool mqtt_errors_enabled()
 void mqtt_publish_error(const struct timeval *now, bool fatal, const std::string &text, int error)
 {
     std::lock_guard<std::mutex> lock(error_mutex);
-    error_total++;
-    if (!fatal && mqtt_error_rate > 0) {
-        /* The second of the limit is read here, behind the mutex: the
-         * caller's time was taken before it, and a caller that waited
-         * would bring an old second back and its allowance with it. */
-        struct timeval limit_clock;
-        GET_TIME(&limit_clock);
-        if (limit_clock.tv_sec != error_second) {
-            error_second = limit_clock.tv_sec;
-            error_second_count = 0;
-        }
-        if (error_second_count >= mqtt_error_rate) {
-            error_suppressed++;
-            return;
-        }
-        error_second_count++;
+    /* The second of the limit is read here, behind the mutex: the caller's
+     * time was taken before it, and a caller that waited would bring an
+     * old second back and its allowance with it. */
+    struct timeval limit_clock;
+    GET_TIME(&limit_clock);
+    if (!error_limit.admit(limit_clock.tv_sec, fatal, mqtt_error_rate)) {
+        return;
     }
     /* Quiet: a publish that fails would be reported with a WARNING, which
      * comes back here. Behind the mutex, so that the count of what was held
      * back goes out once, and is kept when the message is not taken: it,
      * and this error, are reported with the next one that is. */
-    if (mqtt_publish(mqtt_error_topic,
-                     mqtt_error_json(now, fatal, text, error, error_total, error_suppressed, mqtt_error_max_len),
-                     true)) {
-        error_suppressed = 0;
-    } else {
-        error_suppressed++;
-    }
+    error_limit.published(mqtt_publish(mqtt_error_topic,
+                                       mqtt_error_json(now, fatal, text, error, error_limit.total(),
+                                                       error_limit.suppressed(), mqtt_error_max_len),
+                                       true));
 }
 
 std::string mqtt_message_json(const struct timeval *now, const std::string &call_id, const char *direction,
@@ -149,6 +161,60 @@ TEST(mqtt, ErrorJson) {
     json = mqtt_error_json(&tv, true, "Unable to bind main socket", EADDRINUSE, 1, 0, 4096);
     EXPECT_NE(std::string::npos, json.find("\"Fatal\":\"1\""));
     EXPECT_NE(std::string::npos, json.find(std::string("\"ErrnoString\":\"") + strerror(EADDRINUSE) + "\""));
+}
+
+TEST(mqtt, ErrorLimit) {
+    MqttErrorLimit limit;
+    /* two a second: the third and fourth of second 100 are held back */
+    EXPECT_TRUE(limit.admit(100, false, 2));
+    limit.published(true);
+    EXPECT_TRUE(limit.admit(100, false, 2));
+    limit.published(true);
+    EXPECT_FALSE(limit.admit(100, false, 2));
+    EXPECT_FALSE(limit.admit(100, false, 2));
+    EXPECT_EQ(2UL, limit.suppressed());
+    /* a fatal one goes out in a second that is used up, and reports them */
+    EXPECT_TRUE(limit.admit(100, true, 2));
+    EXPECT_EQ(5UL, limit.total());
+    EXPECT_EQ(2UL, limit.suppressed());
+    limit.published(true);
+    EXPECT_EQ(0UL, limit.suppressed());
+    /* the next second has its own two */
+    EXPECT_FALSE(limit.admit(100, false, 2));
+    EXPECT_TRUE(limit.admit(101, false, 2));
+    EXPECT_EQ(1UL, limit.suppressed());
+    limit.published(true);
+    EXPECT_TRUE(limit.admit(101, false, 2));
+    limit.published(true);
+    EXPECT_FALSE(limit.admit(101, false, 2));
+    EXPECT_EQ(9UL, limit.total());
+}
+
+TEST(mqtt, ErrorLimitKeepsTheCountOfAMessageNotTaken) {
+    MqttErrorLimit limit;
+    EXPECT_TRUE(limit.admit(100, false, 1));
+    limit.published(true);
+    EXPECT_FALSE(limit.admit(100, false, 1));
+    /* the message that would have said "1 suppressed" is not taken */
+    EXPECT_TRUE(limit.admit(101, false, 1));
+    EXPECT_EQ(1UL, limit.suppressed());
+    limit.published(false);
+    EXPECT_EQ(2UL, limit.suppressed());
+    /* the next one says both, and then they are forgotten */
+    EXPECT_TRUE(limit.admit(102, false, 1));
+    EXPECT_EQ(2UL, limit.suppressed());
+    limit.published(true);
+    EXPECT_EQ(0UL, limit.suppressed());
+}
+
+TEST(mqtt, ErrorLimitOff) {
+    MqttErrorLimit limit;
+    for (int i = 0; i < 1000; i++) {
+        EXPECT_TRUE(limit.admit(100, false, 0));
+        limit.published(true);
+    }
+    EXPECT_EQ(1000UL, limit.total());
+    EXPECT_EQ(0UL, limit.suppressed());
 }
 
 TEST(mqtt, ErrorJsonCutsLongText) {
