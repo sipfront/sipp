@@ -60,8 +60,18 @@ static std::deque<std::string> mqtt_control_queue;
 static std::atomic<bool> mqtt_control_pending(false);
 static std::atomic<unsigned long> mqtt_control_dropped(0);
 static const size_t MQTT_CONTROL_QUEUE_MAX = 256;
-/* The result of the last subscribe, a MOSQ_ERR_* value. */
+/* Nor does one message take it: what the control socket could not carry
+ * (its datagram is read into SIPP_MAX_MSG_SIZE - 1 bytes) is not queued. */
+static const size_t MQTT_CONTROL_MESSAGE_MAX = SIPP_MAX_MSG_SIZE - 1;
+static std::atomic<unsigned long> mqtt_control_oversized(0);
+/* The result of the last subscribe, a MOSQ_ERR_* value: the request was
+ * handed over, no more. */
 static std::atomic<int> mqtt_subscribe_result(0);
+/* What the broker said to it. */
+enum { MQTT_SUBSCRIPTION_PENDING, MQTT_SUBSCRIPTION_GRANTED, MQTT_SUBSCRIPTION_REFUSED };
+static std::atomic<int> mqtt_subscription(MQTT_SUBSCRIPTION_PENDING);
+/* A refusal after a reconnect, for the main thread to say. */
+static std::atomic<bool> mqtt_subscription_lost(false);
 
 /* Main thread only. */
 static bool mqtt_was_connected = false;
@@ -77,14 +87,37 @@ static void on_connect(struct mosquitto *client, void *, int rc)
     if (rc == 0 && mqtt_ctrl) {
         /* On every connect: the session is a clean one, the broker does
          * not remember the subscription over a reconnect. */
+        mqtt_subscription = MQTT_SUBSCRIPTION_PENDING;
         mqtt_subscribe_result = mosquitto_subscribe(client, nullptr, mqtt_ctrl_topic, mqtt_sub_qos);
     }
     mqtt_connected = (rc == 0);
 }
 
+/* The broker's answer to the subscribe: a QoS for each topic asked for, or
+ * 0x80 and above for one it refuses. */
+static void on_subscribe(struct mosquitto *, void *, int, int qos_count, const int *granted_qos)
+{
+    bool granted = qos_count > 0;
+    for (int i = 0; i < qos_count; i++) {
+        if (granted_qos[i] < 0 || granted_qos[i] > 2) {
+            granted = false;
+        }
+    }
+    if (!granted) {
+        mqtt_subscription_lost = true;
+        mqtt_control_pending = true;
+    }
+    mqtt_subscription = granted ? MQTT_SUBSCRIPTION_GRANTED : MQTT_SUBSCRIPTION_REFUSED;
+}
+
 static void on_message(struct mosquitto *, void *, const struct mosquitto_message *message)
 {
     if (!message->payload || message->payloadlen <= 0) {
+        return;
+    }
+    if ((size_t)message->payloadlen > MQTT_CONTROL_MESSAGE_MAX) {
+        mqtt_control_oversized++;
+        mqtt_control_pending = true;
         return;
     }
     std::lock_guard<std::mutex> lock(mqtt_control_mutex);
@@ -175,6 +208,7 @@ void mqtt_setup()
     mosquitto_disconnect_callback_set(mqtt_client, on_disconnect);
     mosquitto_publish_callback_set(mqtt_client, on_publish);
     mosquitto_message_callback_set(mqtt_client, on_message);
+    mosquitto_subscribe_callback_set(mqtt_client, on_subscribe);
     /* A lost connection is made again after 1 s, then 2, 4, ... up to 30. */
     mosquitto_reconnect_delay_set(mqtt_client, 1, 30, true);
 
@@ -208,10 +242,29 @@ void mqtt_setup()
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
     mqtt_was_connected = true;
-    if (mqtt_ctrl && mqtt_subscribe_result != MOSQ_ERR_SUCCESS) {
-        int result = mqtt_subscribe_result;
-        mqtt_shutdown();
-        ERROR("MQTT: could not subscribe to the control topic '%s': %s", mqtt_ctrl_topic, mosquitto_strerror(result));
+    if (mqtt_ctrl) {
+        if (mqtt_subscribe_result != MOSQ_ERR_SUCCESS) {
+            int result = mqtt_subscribe_result;
+            mqtt_shutdown();
+            ERROR("MQTT: could not subscribe to the control topic '%s': %s", mqtt_ctrl_topic, mosquitto_strerror(result));
+        }
+        /* Handed over is not granted: a run that cannot be stopped from
+         * afar must not start as if it could. The broker's answer is
+         * waited for within what is left of -mqtt_connect_timeout. */
+        while (mqtt_subscription == MQTT_SUBSCRIPTION_PENDING && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+        int subscription = mqtt_subscription;
+        if (subscription != MQTT_SUBSCRIPTION_GRANTED) {
+            mqtt_shutdown();
+            if (subscription == MQTT_SUBSCRIPTION_REFUSED) {
+                ERROR("MQTT: the broker '%s:%d' refused the subscription to the control topic '%s'",
+                      mqtt_host, mqtt_port, mqtt_ctrl_topic);
+            }
+            ERROR("MQTT: no answer from the broker '%s:%d' to the subscription to the control topic '%s' within %d seconds",
+                  mqtt_host, mqtt_port, mqtt_ctrl_topic, mqtt_connect_timeout);
+        }
+        mqtt_subscription_lost = false;
     }
 }
 
@@ -255,6 +308,15 @@ void mqtt_poll()
     unsigned long dropped = mqtt_control_dropped.exchange(0);
     if (dropped) {
         WARNING("MQTT: %lu control messages dropped, they came faster than they could be run", dropped);
+    }
+    unsigned long oversized = mqtt_control_oversized.exchange(0);
+    if (oversized) {
+        WARNING("MQTT: %lu control messages dropped, they were longer than %lu bytes",
+                oversized, (unsigned long)MQTT_CONTROL_MESSAGE_MAX);
+    }
+    if (mqtt_subscription_lost.exchange(false)) {
+        WARNING("MQTT: the broker '%s:%d' refused the subscription to the control topic '%s' after connecting again, "
+                "control messages do not arrive any more", mqtt_host, mqtt_port, mqtt_ctrl_topic);
     }
     for (const std::string &message : messages) {
         process_control_message(message.data(), message.length());
