@@ -295,16 +295,29 @@ void sipp_curl_poll()
 
 void sipp_curl_shutdown()
 {
+    size_t discarded;
+    bool had_workers;
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
-        if (workers.empty()) {
-            return;
+        had_workers = !workers.empty();
+        if (had_workers) {
+            /* What is queued and under way gets its chance. */
+            queue_wakeup.wait_for(lock, std::chrono::seconds(CURL_SHUTDOWN_SECONDS),
+                                  [] { return queue.empty() && in_flight == 0; });
         }
-        /* What is queued and under way gets its chance. */
-        queue_wakeup.wait_for(lock, std::chrono::seconds(CURL_SHUTDOWN_SECONDS),
-                              [] { return queue.empty() && in_flight == 0; });
+        /* What is left is not made: what waited longer than that, or what
+         * an <init> queued in a run that ended before the workers began. */
+        discarded = queue.size();
         queue.clear();
-        stopping = true;
+        stopping = had_workers;
+    }
+    if (discarded) {
+        WARNING("curl: %zu requests not made, SIPp ended while they were waiting", discarded);
+    }
+    if (!had_workers) {
+        /* what was dropped from a full queue is still to be said */
+        sipp_curl_poll();
+        return;
     }
     queue_wakeup.notify_all();
     /* A worker in a request ends with its timeout at the latest. */

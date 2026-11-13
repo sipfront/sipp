@@ -155,7 +155,8 @@ that fails -- no connection, no answer within ten seconds, a status of 400
 or more -- is reported as a warning (see ``-trace_err``), which names the
 URL without its user, password and query. With more than
 10000 requests waiting, new ones are dropped and counted in a warning. On
-exit SIPp gives the requests still waiting three seconds.
+exit SIPp gives the requests still waiting three seconds; a warning says
+how many were not made.
 
 Example that tells a media server about the SDP a call got::
 

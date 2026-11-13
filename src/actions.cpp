@@ -112,7 +112,9 @@ void CAction::printInfo(char* buf, int len)
     } else if (M_action == E_AT_LOG_TO_FILE) {
         snprintf(buf, len, "Type[%d] - message[%-32.32s]", M_action, M_message_str[0].c_str());
     } else if (M_action == E_AT_CURL) {
-        snprintf(buf, len, "Type[%d] - curl[%-32.32s]", M_action, M_message_str[0].c_str());
+        /* as a warning names it: no password, no token on the screen */
+        snprintf(buf, len, "Type[%d] - curl[%-32.32s]", M_action,
+                 sipp_curl_loggable_url(M_message_str[0]).c_str());
     } else if (M_action == E_AT_LOG_WARNING) {
         snprintf(buf, len, "Type[%d] - warning[%-32.32s]", M_action, M_message_str[0].c_str());
     } else if (M_action == E_AT_LOG_ERROR) {
