@@ -3092,17 +3092,18 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
     return msg_buffer;
 }
 
-std::string call::createSendingString(SendingMessage *src, int P_index)
+std::string call::createSendingString(SendingMessage *src, int P_index, bool *was_cut)
 {
     /* Not the buffer createSendingMessage() returns, which holds the
      * message sent while its actions run. */
     static char scratch[SIPP_MAX_MSG_SIZE + 1];
-    return buildSendingMessage(src, P_index, scratch, sizeof(scratch), 0);
+    return buildSendingMessage(src, P_index, scratch, sizeof(scratch), 0, was_cut);
 }
 
 /* The message, cut to buf_len - 1 bytes. The keywords that fill a char
  * buffer use scratch, of buf_len bytes. */
-std::string call::buildSendingMessage(SendingMessage *src, int P_index, char *scratch, int buf_len, size_t reserve)
+std::string call::buildSendingMessage(SendingMessage *src, int P_index, char *scratch, int buf_len, size_t reserve,
+                                      bool *was_cut)
 {
     const size_t max_len = buf_len - 1;
     std::string out;
@@ -3638,6 +3639,9 @@ std::string call::buildSendingMessage(SendingMessage *src, int P_index, char *sc
     if (out.size() > max_len) {
         out.resize(max_len);
         truncated = true;
+    }
+    if (was_cut) {
+        *was_cut = truncated;
     }
     if (truncated) {
         static bool warned = false;
@@ -5430,13 +5434,14 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
         } else if (currentAction->getActionType() == CAction::E_AT_CURL) {
             SendingMessage *data = currentAction->getMessage(1);
             SendingMessage *content_type = currentAction->getMessage(2);
-            const std::string url = createSendingString(currentAction->getMessage(0));
-            const std::string body = data ? createSendingString(data) : "";
-            if (url.length() >= SIPP_MAX_MSG_SIZE || body.length() >= SIPP_MAX_MSG_SIZE) {
+            bool url_cut = false, body_cut = false;
+            const std::string url = createSendingString(currentAction->getMessage(0), -1, &url_cut);
+            const std::string body = data ? createSendingString(data, -1, &body_cut) : "";
+            if (url_cut || body_cut) {
                 /* Cut where a rendered string ends: the start of a body
                  * is not the body, and a server may take it for one. */
                 WARNING("curl: the %s is longer than %d bytes, the request is not made",
-                        body.length() >= SIPP_MAX_MSG_SIZE ? "body" : "url", SIPP_MAX_MSG_SIZE - 1);
+                        body_cut ? "body" : "url", SIPP_MAX_MSG_SIZE);
             } else {
                 sipp_curl((curl_method_t)currentAction->getCurlMethod(), url, data != nullptr, body,
                           content_type ? createSendingString(content_type) : "");
@@ -6757,6 +6762,27 @@ TEST(reuse_user_callid, cseq_follows_the_bye_of_an_abort)
     /* never back, and unchanged without a CSeq to read */
     EXPECT_EQ(5u, cseq_after_request("BYE sip:a@b SIP/2.0\r\nCSeq: 3 BYE\r\n\r\n", 5));
     EXPECT_EQ(5u, cseq_after_request("BYE sip:a@b SIP/2.0\r\n\r\n", 5));
+}
+
+TEST(create_sending_message, string_says_when_it_was_cut)
+{
+    mockcall test_call(false);
+    bool was_cut = true;
+    SendingMessage fits(main_scenario, "abc", true);
+    EXPECT_EQ("abc", test_call.createSendingString(&fits, -1, &was_cut));
+    EXPECT_FALSE(was_cut);
+
+    const std::string big(SIPP_MAX_MSG_SIZE + 100, 'x');
+    SendingMessage too_long(main_scenario, big.c_str(), true);
+    EXPECT_EQ((size_t)SIPP_MAX_MSG_SIZE, test_call.createSendingString(&too_long, -1, &was_cut).length());
+    EXPECT_TRUE(was_cut);
+
+    /* a [len] without an end of the headers puts a short text in the place
+     * of what was cut: still cut */
+    SendingMessage shrinks(main_scenario, ("[len]" + big).c_str(), true);
+    was_cut = false;
+    EXPECT_LT(test_call.createSendingString(&shrinks, -1, &was_cut).length(), (size_t)100);
+    EXPECT_TRUE(was_cut);
 }
 
 TEST(call_run, stops_after_fatal_retransmission_send_error) {

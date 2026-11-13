@@ -145,7 +145,7 @@ of SIP what a call is doing. It needs libcurl at build time
 
 + url: where to. Keywords are expanded.
 + method: GET (the default), POST, PUT or DELETE.
-+ data: optional, the body. Keywords are expanded. With them it can be 65535
++ data: optional, the body. Keywords are expanded. With them it can be 65536
   bytes long; a request with a longer body is not made, and a warning says so.
 + content_type: optional, the Content-Type of the body.
 
