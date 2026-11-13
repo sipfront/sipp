@@ -90,8 +90,8 @@ static void mqtt_report_connection()
     if (connected) {
         WARNING("MQTT: connected to the broker '%s:%d' again", mqtt_host, mqtt_port);
     } else {
-        WARNING("MQTT: lost the connection to the broker '%s:%d' (%s), trying to connect again",
-                mqtt_host, mqtt_port, mosquitto_strerror(mqtt_disconnect_reason));
+        WARNING("MQTT: lost the connection to the broker '%s:%d' (%s), trying to connect again", mqtt_host, mqtt_port,
+                mosquitto_strerror(mqtt_disconnect_reason));
     }
 }
 
@@ -158,15 +158,14 @@ void mqtt_setup()
         if (connack > 0) {
             /* The broker answered and said no: waiting will not change it. */
             mqtt_shutdown();
-            ERROR("MQTT: the broker '%s:%d' refused the connection: %s",
-                  mqtt_host, mqtt_port, mosquitto_connack_string(connack));
+            ERROR("MQTT: the broker '%s:%d' refused the connection: %s", mqtt_host, mqtt_port,
+                  mosquitto_connack_string(connack));
         }
         if (std::chrono::steady_clock::now() >= deadline) {
             int reason = mqtt_disconnect_reason;
             mqtt_shutdown();
-            ERROR("MQTT: no connection to the broker '%s:%d' within %d seconds%s%s",
-                  mqtt_host, mqtt_port, mqtt_connect_timeout,
-                  reason ? ": " : "", reason ? mosquitto_strerror(reason) : "");
+            ERROR("MQTT: no connection to the broker '%s:%d' within %d seconds%s%s", mqtt_host, mqtt_port,
+                  mqtt_connect_timeout, reason ? ": " : "", reason ? mosquitto_strerror(reason) : "");
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
@@ -180,8 +179,8 @@ bool mqtt_publish(const char *topic, const std::string &payload)
     }
     mqtt_report_connection();
 
-    int rc = mosquitto_publish(mqtt_client, nullptr, topic, (int)payload.length(),
-                               payload.c_str(), mqtt_pub_qos, false);
+    int rc =
+        mosquitto_publish(mqtt_client, nullptr, topic, (int)payload.length(), payload.c_str(), mqtt_pub_qos, false);
     if (rc == MOSQ_ERR_SUCCESS) {
         mqtt_undelivered++;
         return true;
@@ -193,8 +192,8 @@ bool mqtt_publish(const char *topic, const std::string &payload)
     unsigned long now = getmilliseconds();
     if (!mqtt_last_failure_report || now - mqtt_last_failure_report >= MQTT_FAILURE_REPORT_INTERVAL) {
         mqtt_last_failure_report = now ? now : 1;
-        WARNING("MQTT: could not publish to '%s': %s (%lu messages not published so far)",
-                topic, mosquitto_strerror(rc), mqtt_failed_publishes);
+        WARNING("MQTT: could not publish to '%s': %s (%lu messages not published so far)", topic,
+                mosquitto_strerror(rc), mqtt_failed_publishes);
     }
     return false;
 }
