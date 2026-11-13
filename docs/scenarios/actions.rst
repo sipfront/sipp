@@ -136,6 +136,35 @@ The following example is used to:
   Release 3.6.0 added rudimentary XML syntax checks. Now the & and <
   characters must be escaped as &amp; and &lt; even inside attribute values.
 
+Make an HTTP request
+--------------------
+
+The "curl" action makes an HTTP or HTTPS request, to tell a system outside
+of SIP what a call is doing. It needs libcurl at build time
+(``cmake . -DUSE_CURL=1``).
+
++ url: where to. Keywords are expanded.
++ method: GET (the default), POST, PUT or DELETE.
++ data: optional, the body. Keywords are expanded.
++ content_type: optional, the Content-Type of the body.
+
+The call does not wait for the request: it is queued, and one of four
+worker threads makes it, so a slow server does not hold up SIPp. A request
+that fails -- no connection, no answer within ten seconds, a status of 400
+or more -- is reported as a warning (see ``-trace_err``). With more than
+10000 requests waiting, new ones are dropped and counted in a warning. On
+exit SIPp gives the requests still waiting three seconds.
+
+Example that tells a media server about the SDP a call got::
+
+    <recv response="200">
+      <action>
+        <ereg regexp=".+" search_in="body" assign_to="sdp" />
+        <curl method="POST" content_type="application/sdp"
+              url="http://localhost:8001/create/[call_id]" data="[$sdp]" />
+      </action>
+    </recv>
+
 Log a message
 +++++++++++++
 

@@ -1004,6 +1004,10 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
         /* What came in over -mqtt_ctrl since the last pass. */
         mqtt_poll();
 #endif
+#ifdef USE_CURL
+        /* The <curl> requests that failed since the last pass. */
+        sipp_curl_poll();
+#endif
 
         if (timeout_fired) {
             timeout_fired = false;
@@ -1616,6 +1620,11 @@ void sipp_exit(int rc, int rtp_errors, int echo_errors)
         print_screens();
     }
 
+#ifdef USE_CURL
+    /* Before the last statistics and the error log close: what the
+     * <curl> requests still under way come to is reported with them. */
+    sipp_curl_shutdown();
+#endif
     screen_exit();
     print_last_stats();
 #ifdef USE_MQTT

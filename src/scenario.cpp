@@ -1478,6 +1478,25 @@ void scenario::parseAction(CActions *actions)
         } /* end !strcmp(actionElem, "ereg") */ else if(!strcmp(actionElem, "log")) {
             tmpAction->setMessage(xp_get_string("message", "log"));
             tmpAction->setActionType(CAction::E_AT_LOG_TO_FILE);
+        } else if(!strcmp(actionElem, "curl")) {
+#ifdef USE_CURL
+            const char *value;
+            tmpAction->setMessage(xp_get_string("url", "curl"), 0);
+            if ((value = xp_get_value("data"))) {
+                tmpAction->setMessage(value, 1);
+            }
+            if ((value = xp_get_value("content_type"))) {
+                tmpAction->setMessage(value, 2);
+            }
+            curl_method_t method = sipp_curl_method(xp_get_value("method"));
+            if (method == CURL_METHOD_INVALID) {
+                ERROR("The method of a curl action is GET, POST, PUT or DELETE, not '%s'", xp_get_value("method"));
+            }
+            tmpAction->setCurlMethod(method);
+            tmpAction->setActionType(CAction::E_AT_CURL);
+#else
+            ERROR("The scenario has a curl action, but this SIPp is built without libcurl (-DUSE_CURL=1)");
+#endif
         } else if(!strcmp(actionElem, "warning")) {
             tmpAction->setMessage(xp_get_string("message", "warning"));
             tmpAction->setActionType(CAction::E_AT_LOG_WARNING);

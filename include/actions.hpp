@@ -72,6 +72,7 @@ public:
         E_AT_VERIFY_AUTH,
         E_AT_SET_DEST,
         E_AT_CLOSE_CON,
+        E_AT_CURL,
 #ifdef PCAPPLAY
         E_AT_PLAY_PCAP_AUDIO,
         E_AT_PLAY_PCAP_IMAGE,
@@ -150,6 +151,8 @@ public:
     const char *getRegularExpression();
     SendingMessage *getMessage(int n = 0);  /* log specific function  */
     T_IntCmdType   getIntCmd();   /* exec specific function */
+    int            getCurlMethod() { return M_curlMethod; }   /* curl specific function */
+    void           setCurlMethod(int P_method) { M_curlMethod = P_method; }
 #ifdef PCAPPLAY
     pcap_pkts     *getPcapPkts(); /* send_packets specific function */
 #endif
@@ -222,6 +225,8 @@ private:
     std::string M_message_str[MAX_ACTION_MESSAGE];
     /* exec specific member */
     T_IntCmdType   M_IntCmd;
+    /* curl specific member: a curl_method_t */
+    int            M_curlMethod = 0;
     /* sample specific member. */
     CSample *      M_distribution;
     /* assign value specific member. */

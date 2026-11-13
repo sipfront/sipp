@@ -79,6 +79,7 @@
 #include "ratetask.hpp"
 #include "watchdog.hpp"
 #include "mqtt.hpp"
+#include "curl.hpp"
 
 /*
  * If this files is included in the Main, then extern definitions

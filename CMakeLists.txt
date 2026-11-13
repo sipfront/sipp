@@ -148,6 +148,11 @@ function(apply_common_sipp_dependencies TARGET_NAME)
     target_link_libraries(${TARGET_NAME} ${MOSQUITTO_LIBRARY})
   endif()
 
+  if(USE_CURL)
+    target_include_directories(${TARGET_NAME} PRIVATE ${CURL_INCLUDE_DIRS})
+    target_link_libraries(${TARGET_NAME} ${CURL_LIBRARIES})
+  endif()
+
   if(LUA_FOUND)
     if(BUILD_STATIC AND LUA_STATIC_LIBRARIES)
       target_link_libraries(${TARGET_NAME} ${LUA_STATIC_LIBRARIES})
@@ -168,6 +173,24 @@ endfunction()
 optional_library(SCTP "Build with SCTP support")
 optional_library(PCAP "Build with PCAP playback support")
 optional_library(GSL "Build with improved statistical support")
+
+# The <curl> action (src/curl.cpp) needs libcurl: DEFAULT builds it in when
+# the library is there, ON or 1 requires it, OFF or 0 leaves it out.
+set(USE_CURL "DEFAULT" CACHE STRING "Build with the curl action (libcurl)")
+if(USE_CURL STREQUAL "OFF" OR USE_CURL STREQUAL "0")
+  set(USE_CURL 0)
+else()
+  find_package(CURL QUIET)
+  if(CURL_FOUND)
+    message(STATUS "CURL is enabled")
+    set(USE_CURL 1)
+  elseif(USE_CURL STREQUAL "ON" OR USE_CURL STREQUAL "1")
+    message(FATAL_ERROR "USE_CURL is ON, but libcurl is missing: install its development package")
+  else()
+    message(STATUS "CURL is disabled")
+    set(USE_CURL 0)
+  endif()
+endif()
 
 # MQTT publishing (src/mqtt.cpp) needs libmosquitto: DEFAULT builds it in when
 # the library is there, ON or 1 requires it, OFF or 0 leaves it out.
@@ -330,6 +353,10 @@ endif(USE_SCTP)
 if(USE_MQTT)
   add_definitions("-DUSE_MQTT")
 endif(USE_MQTT)
+
+if(USE_CURL)
+  add_definitions("-DUSE_CURL")
+endif(USE_CURL)
 
 # Find all libraries before creating targets
 if(PKG_CONFIG_FOUND)

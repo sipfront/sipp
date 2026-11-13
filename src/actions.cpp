@@ -111,6 +111,8 @@ void CAction::printInfo(char* buf, int len)
         snprintf(buf, len, "Type[%d] - intcmd[%-32.32s]", M_action, strIntCmd(M_IntCmd));
     } else if (M_action == E_AT_LOG_TO_FILE) {
         snprintf(buf, len, "Type[%d] - message[%-32.32s]", M_action, M_message_str[0].c_str());
+    } else if (M_action == E_AT_CURL) {
+        snprintf(buf, len, "Type[%d] - curl[%-32.32s]", M_action, M_message_str[0].c_str());
     } else if (M_action == E_AT_LOG_WARNING) {
         snprintf(buf, len, "Type[%d] - warning[%-32.32s]", M_action, M_message_str[0].c_str());
     } else if (M_action == E_AT_LOG_ERROR) {

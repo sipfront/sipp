@@ -5391,6 +5391,15 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
                 ->setString(createSendingString(currentAction->getMessage()));
         } else if (currentAction->getActionType() == CAction::E_AT_LOG_TO_FILE) {
             LOG_MSG("%s\n", createSendingString(currentAction->getMessage()).c_str());
+#ifdef USE_CURL
+        } else if (currentAction->getActionType() == CAction::E_AT_CURL) {
+            SendingMessage *data = currentAction->getMessage(1);
+            SendingMessage *content_type = currentAction->getMessage(2);
+            sipp_curl((curl_method_t)currentAction->getCurlMethod(),
+                      createSendingString(currentAction->getMessage(0)),
+                      data != nullptr, data ? createSendingString(data) : "",
+                      content_type ? createSendingString(content_type) : "");
+#endif
         } else if (currentAction->getActionType() == CAction::E_AT_LOG_WARNING) {
             WARNING("%s", createSendingString(currentAction->getMessage()).c_str());
         } else if (currentAction->getActionType() == CAction::E_AT_LOG_ERROR) {
