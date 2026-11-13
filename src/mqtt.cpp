@@ -305,10 +305,14 @@ bool mqtt_publish(const char *topic, const std::string &payload, bool quiet)
     }
     int rc = mosquitto_publish(mqtt_client, nullptr, topic, (int)payload.length(),
                                payload.c_str(), mqtt_pub_qos, false);
+    if (rc == MOSQ_ERR_SUCCESS) {
+        /* Before the shutdown is let go on: it waits for what is
+         * undelivered next, and has to find this message there. */
+        mqtt_undelivered++;
+    }
     /* Before the warning below, which is a publish of its own. */
     mqtt_publishing--;
     if (rc == MOSQ_ERR_SUCCESS) {
-        mqtt_undelivered++;
         return true;
     }
 
