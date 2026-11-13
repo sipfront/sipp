@@ -53,6 +53,14 @@
  *   The messages arrive in libmosquitto's thread, which only queues them;
  *   the main loop takes them from the queue (mqtt_poll) and runs them.
  *
+ * Errors and messages (mqtt_log.cpp), with -mqtt_stats
+ *
+ *   -trace_err      what the error log gets goes to -mqtt_error_topic instead,
+ *                   -mqtt_error_rate messages a second at most; the others are
+ *                   counted and reported with the next one.
+ *   -trace_msg,     every SIP message sent and received goes to
+ *   -trace_shortmsg -mqtt_message_topic too, whole or its first line.
+ *
  * See docs/mqtt.rst for the options and the messages.
  */
 
@@ -73,8 +81,8 @@ void mqtt_shutdown();
 
 /* Publish a payload to a topic with -mqtt_pub_qos. Returns false when it was
  * not handed to the broker connection; that is reported as a warning, at most
- * once every few seconds. Main thread only. */
-bool mqtt_publish(const char *topic, const std::string &payload);
+ * once every few seconds, unless quiet. Any thread. */
+bool mqtt_publish(const char *topic, const std::string &payload, bool quiet = false);
 
 /* True between a successful mqtt_setup() and mqtt_shutdown(). */
 bool mqtt_active();
@@ -86,6 +94,19 @@ void mqtt_poll();
 /* Publish the statistics, the message counts and the error codes of the main
  * scenario. Called by the statistics task every -fd interval and at exit. */
 void mqtt_report_stats();
+
+/* True when errors go to MQTT and not to the error log: -trace_err with
+ * -mqtt_stats, while the connection is set up. */
+bool mqtt_errors_enabled();
+
+/* Publish an error or warning to -mqtt_error_topic, or count it when the
+ * second's share is used up. Any thread. */
+void mqtt_publish_error(const struct timeval *now, bool fatal, const std::string &text, int error);
+
+/* Publish a SIP message that was sent ("send") or received ("recv") to
+ * -mqtt_message_topic, if -trace_msg or -trace_shortmsg ask for it. */
+void mqtt_trace_message(const struct timeval *now, const char *direction, const char *transport,
+                        bool control, const char *buffer, size_t len);
 
 /* ---- the pieces the messages are made of (no connection needed) ---- */
 
@@ -104,6 +125,14 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
  * line shorter than the header gives empty strings. */
 std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
                              const std::string &delimiter);
+
+/* An error as it is published. */
+std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text,
+                            int error, unsigned long total, unsigned long suppressed, int max_len);
+
+/* A SIP message as it is published. */
+std::string mqtt_message_json(const struct timeval *now, const std::string &call_id, const char *direction,
+                              const char *transport, bool control, const std::string &message, size_t size);
 
 #endif /* USE_MQTT */
 

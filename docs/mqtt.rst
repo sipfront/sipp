@@ -92,3 +92,44 @@ keyboard, such as ``q``, or ``c`` followed by a command, such as
 The messages are run by the main loop on its next pass, in the order they
 came. Should they come faster than they can be run, the oldest of more than
 256 waiting are dropped and a warning says how many.
+
+Errors
+------
+
+With ``-mqtt_stats``, ``-trace_err`` publishes the errors and warnings to
+``-mqtt_error_topic`` (default ``/sipp/errors``) instead of writing them to
+the error log. A fatal error is also printed to stderr, as always.
+
+.. code-block:: json
+
+   {"CurrentTime":"2026-11-13 16:59:16.818746",
+    "Content":"Call-Id: 1-5240@127.0.0.1, receive timeout on message ...",
+    "Fatal":"0", "Total":"1", "Suppressed":"0",
+    "ErrnoString":"", "Errno":"0"}
+
+A load test that fails has an error per call. So at most
+``-mqtt_error_rate`` errors (2 by default, 0 for no limit) are published a
+second; the others are counted, and the next one published says how many
+were held back since the one before it in ``Suppressed``. ``Total`` counts
+all of them. A fatal error is always published.
+
+``Content`` is cut after ``-mqtt_error_max_len`` bytes (4096 by default, 0
+for no limit), which leaves an unexpected SIP message readable.
+
+SIP messages
+------------
+
+With ``-mqtt_stats``, ``-trace_msg`` publishes every SIP message sent and
+received to ``-mqtt_message_topic`` (default ``/sipp/messages``), next to
+writing it to its log; ``-trace_shortmsg`` alone publishes the first line of
+each. This is one MQTT message per SIP message: for following single calls,
+not for load.
+
+.. code-block:: json
+
+   {"CurrentTime":"2026-11-13 16:59:16.818746", "CallId":"1-5240@127.0.0.1",
+    "Direction":"recv", "Transport":"UDP", "Type":"",
+    "Message":"SIP/2.0 200 OK", "Size":"512"}
+
+``Direction`` is ``send`` or ``recv``; ``Type`` is ``control`` for a message
+on the 3PCC control connection.

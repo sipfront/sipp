@@ -1247,6 +1247,9 @@ void process_message(SIPpSocket *socket, char *msg, ssize_t msg_size, struct soc
                   socket->ss_control ? "control " : "",
                   msg_size, msg);
     }
+#ifdef USE_MQTT
+    mqtt_trace_message(&currentTime, "recv", TRANSPORT_TO_STRING(socket->ss_transport), socket->ss_control, msg, msg_size);
+#endif
 
     // got as message not relating to a known call
     if (!listener_ptr) {
@@ -2505,6 +2508,9 @@ void SIPpSocket::trace_sent(const char *buffer, size_t len)
                        first_line.data());
         free(msg);
     }
+#ifdef USE_MQTT
+    mqtt_trace_message(&currentTime, "send", TRANSPORT_TO_STRING(ss_transport), ss_control, buffer, len);
+#endif
 }
 
 /* Flush any output buffers for this socket. */
