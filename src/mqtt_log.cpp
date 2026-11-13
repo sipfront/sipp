@@ -76,32 +76,35 @@ bool mqtt_errors_enabled()
 
 void mqtt_publish_error(const struct timeval *now, bool fatal, const std::string &text, int error)
 {
-    std::string json;
-    {
-        std::lock_guard<std::mutex> lock(error_mutex);
-        error_total++;
-        if (!fatal && mqtt_error_rate > 0) {
-            /* The second of the limit is read here, behind the mutex: the
-             * caller's time was taken before it, and a caller that waited
-             * would bring an old second back and its allowance with it. */
-            struct timeval limit_clock;
-            GET_TIME(&limit_clock);
-            if (limit_clock.tv_sec != error_second) {
-                error_second = limit_clock.tv_sec;
-                error_second_count = 0;
-            }
-            if (error_second_count >= mqtt_error_rate) {
-                error_suppressed++;
-                return;
-            }
-            error_second_count++;
+    std::lock_guard<std::mutex> lock(error_mutex);
+    error_total++;
+    if (!fatal && mqtt_error_rate > 0) {
+        /* The second of the limit is read here, behind the mutex: the
+         * caller's time was taken before it, and a caller that waited
+         * would bring an old second back and its allowance with it. */
+        struct timeval limit_clock;
+        GET_TIME(&limit_clock);
+        if (limit_clock.tv_sec != error_second) {
+            error_second = limit_clock.tv_sec;
+            error_second_count = 0;
         }
-        json = mqtt_error_json(now, fatal, text, error, error_total, error_suppressed, mqtt_error_max_len);
-        error_suppressed = 0;
+        if (error_second_count >= mqtt_error_rate) {
+            error_suppressed++;
+            return;
+        }
+        error_second_count++;
     }
     /* Quiet: a publish that fails would be reported with a WARNING, which
-     * comes back here. */
-    mqtt_publish(mqtt_error_topic, json, true);
+     * comes back here. Behind the mutex, so that the count of what was held
+     * back goes out once, and is kept when the message is not taken: it,
+     * and this error, are reported with the next one that is. */
+    if (mqtt_publish(mqtt_error_topic,
+                     mqtt_error_json(now, fatal, text, error, error_total, error_suppressed, mqtt_error_max_len),
+                     true)) {
+        error_suppressed = 0;
+    } else {
+        error_suppressed++;
+    }
 }
 
 std::string mqtt_message_json(const struct timeval *now, const std::string &call_id, const char *direction,
