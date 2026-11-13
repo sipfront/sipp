@@ -934,9 +934,15 @@ static void sipp_sigusr2(int /* not used */)
 /* ERROR() and the exit it makes are not safe in a signal handler, which
  * may have interrupted a malloc: the traffic loop acts on the timeout. */
 static std::atomic<bool> timeout_fired{false};
-/* Set while the calls get -timeout_grace to end; the alarm that ends it
- * fires timeout_fired again. */
-static bool timeout_in_grace = false;
+/* The alarm that ends -timeout_grace (timeout_in_grace) fires
+ * timeout_fired again. When the global timeout was reached, for the error
+ * of -timeout_error, which waits for the grace to be over. */
+static unsigned long timeout_reached_at = 0;
+
+static void timeout_is_error()
+{
+    ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)timeout_reached_at / 1000LL));
+}
 
 void timeout_alarm(int /*param*/)
 {
@@ -1004,11 +1010,18 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
 
         if (timeout_fired) {
             timeout_fired = false;
-            if (timeout_error) {
-                ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)clock_tick / 1000LL));
+            const bool grace_begins = timeout_grace > 0 && !timeout_in_grace && quitting < 11;
+            if (!timeout_in_grace) {
+                timeout_reached_at = clock_tick;
+            }
+            if (timeout_error && !grace_begins) {
+                /* At once without a grace, and when the grace is over.
+                 * While it lasts the calls are let to end first: the
+                 * error is made where the loop leaves. */
+                timeout_is_error();
             }
             timeout_exit = true;
-            if (timeout_grace > 0 && !timeout_in_grace && quitting < 11) {
+            if (grace_begins) {
                 /* No new calls, and those in a pause go on to their end; the
                  * alarm comes back when the grace is over. The loop leaves as
                  * soon as no call is up. */
@@ -1060,7 +1073,17 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
         }
         if (quitting) {
             /* Quitting and no more opened calls, close all */
-            if ((quitting >= 11) || !main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall)) {
+            bool calls_up = main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall);
+            if (timeout_in_grace && rx_scenario && rx_scenario->stats->GetStat(CStat::CPT_C_CurrentCall)) {
+                /* Mixed mode: the grace is for the calls that came in too. */
+                calls_up = true;
+            }
+            if ((quitting >= 11) || !calls_up) {
+                if (timeout_in_grace && timeout_error) {
+                    /* The calls ended within the grace; it stays a run
+                     * that reached its timeout. */
+                    timeout_is_error();
+                }
                 /* We can have calls that do not count towards our open-call count (e.g., dead calls). */
                 abort_all_tasks();
                 rtp_errors = rtpstream_shutdown();

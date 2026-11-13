@@ -279,6 +279,8 @@ MAYBE_EXTERN const char       * mqtt_message_topic      DEFVAL("/sipp/messages")
 MAYBE_EXTERN bool               timeout_exit            DEFVAL(false);
 MAYBE_EXTERN bool               timeout_error           DEFVAL(false);
 MAYBE_EXTERN unsigned long      timeout_grace           DEFVAL(0);
+/* Set while the calls get -timeout_grace to end: no call begins. */
+MAYBE_EXTERN bool               timeout_in_grace        DEFVAL(false);
 
 MAYBE_EXTERN unsigned long      report_freq_dumpRtt     DEFVAL
 (DEFAULT_FREQ_DUMP_RTT);
