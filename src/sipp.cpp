@@ -1075,9 +1075,15 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
         if (quitting) {
             /* Quitting and no more opened calls, close all */
             bool calls_up = main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall);
-            if (timeout_in_grace && rx_scenario && rx_scenario->stats->GetStat(CStat::CPT_C_CurrentCall)) {
-                /* Mixed mode: the grace is for the calls that came in too. */
-                calls_up = true;
+            if (timeout_in_grace) {
+                /* The grace is for every call that is up: also those that
+                 * came in (mixed mode) and those of the out-of-call
+                 * scenario, which the main scenario's count leaves out. */
+                for (scenario *s : {rx_scenario, ooc_scenario}) {
+                    if (s && s->stats->GetStat(CStat::CPT_C_CurrentCall)) {
+                        calls_up = true;
+                    }
+                }
             }
             if ((quitting >= 11) || !calls_up) {
                 if (timeout_in_grace && timeout_error) {
