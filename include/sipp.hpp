@@ -272,6 +272,10 @@ MAYBE_EXTERN const char       * mqtt_codestats_topic    DEFVAL("/sipp/codestats"
 MAYBE_EXTERN bool               mqtt_ctrl               DEFVAL(false);
 MAYBE_EXTERN const char       * mqtt_ctrl_topic         DEFVAL("/sipp/ctrl");
 MAYBE_EXTERN int                mqtt_sub_qos            DEFVAL(1);
+MAYBE_EXTERN const char       * mqtt_error_topic        DEFVAL("/sipp/errors");
+MAYBE_EXTERN int                mqtt_error_rate         DEFVAL(2);
+MAYBE_EXTERN int                mqtt_error_max_len      DEFVAL(4096);
+MAYBE_EXTERN const char       * mqtt_message_topic      DEFVAL("/sipp/messages");
 #endif
 
 MAYBE_EXTERN bool               timeout_exit            DEFVAL(false);

@@ -805,6 +805,10 @@ struct sipp_option options_table[] = {
     {"mqtt_ctrl", "Take control messages from the MQTT broker as from the control socket (-cp): SIPp subscribes to -mqtt_ctrl_topic, and each message is a key, such as 'q', or 'c' and a command, such as 'cset rate 10'.", SIPP_OPTION_BOOL, &mqtt_ctrl, 1},
     {"mqtt_ctrl_topic", "Set the MQTT topic control messages are taken from. Default is '/sipp/ctrl'.", SIPP_OPTION_STRING, &mqtt_ctrl_topic, 1},
     {"mqtt_sub_qos", "Set the QoS of the subscription to the control topic: 0, 1 or 2. Default is 1.", SIPP_OPTION_INT, &mqtt_sub_qos, 1},
+    {"mqtt_error_topic", "Set the MQTT topic errors and warnings are published to when -trace_err is given with -mqtt_stats; the error log is not written then. Default is '/sipp/errors'.", SIPP_OPTION_STRING, &mqtt_error_topic, 1},
+    {"mqtt_error_rate", "Publish at most that many errors a second to -mqtt_error_topic; the others are counted and reported as 'Suppressed' with the next one published. Fatal errors are always published. 0 publishes every error. Default is 2.", SIPP_OPTION_INT, &mqtt_error_rate, 1},
+    {"mqtt_error_max_len", "Cut the text of an error published to -mqtt_error_topic after that many bytes. 0 does not cut. Default is 4096.", SIPP_OPTION_INT, &mqtt_error_max_len, 1},
+    {"mqtt_message_topic", "Set the MQTT topic the SIP messages are published to when -trace_msg (whole messages) or -trace_shortmsg (their first lines) is given with -mqtt_stats. Default is '/sipp/messages'.", SIPP_OPTION_STRING, &mqtt_message_topic, 1},
 #else
     {"mqtt_stats", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_host", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
@@ -824,6 +828,10 @@ struct sipp_option options_table[] = {
     {"mqtt_ctrl", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_ctrl_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_sub_qos", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_error_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_error_rate", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_error_max_len", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_message_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
 #endif
 
     {"", "Tracing, logging and statistics options:", SIPP_HELP_TEXT_HEADER, nullptr, 0},
