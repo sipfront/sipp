@@ -143,6 +143,18 @@ function(apply_common_sipp_dependencies TARGET_NAME)
     target_link_libraries(${TARGET_NAME} ${SCTP_LIBRARY})
   endif()
 
+  if(USE_MQTT)
+    target_include_directories(${TARGET_NAME} PRIVATE ${MOSQUITTO_INCLUDE_DIR})
+    if(BUILD_STATIC AND MOSQUITTO_STATIC_LIBRARIES)
+      target_link_libraries(${TARGET_NAME} ${MOSQUITTO_STATIC_LIBRARIES})
+      if(MOSQUITTO_STATIC_LIBRARY_DIRS)
+        target_link_directories(${TARGET_NAME} PRIVATE ${MOSQUITTO_STATIC_LIBRARY_DIRS})
+      endif()
+    else()
+      target_link_libraries(${TARGET_NAME} ${MOSQUITTO_LIBRARY})
+    endif()
+  endif()
+
   if(LUA_FOUND)
     if(BUILD_STATIC AND LUA_STATIC_LIBRARIES)
       target_link_libraries(${TARGET_NAME} ${LUA_STATIC_LIBRARIES})
@@ -163,6 +175,25 @@ endfunction()
 optional_library(SCTP "Build with SCTP support")
 optional_library(PCAP "Build with PCAP playback support")
 optional_library(GSL "Build with improved statistical support")
+
+# MQTT publishing (src/mqtt.cpp) needs libmosquitto: DEFAULT builds it in when
+# the library is there, ON or 1 requires it, OFF or 0 leaves it out.
+set(USE_MQTT "DEFAULT" CACHE STRING "Build with MQTT publishing (libmosquitto)")
+if(USE_MQTT STREQUAL "OFF" OR USE_MQTT STREQUAL "0")
+  set(USE_MQTT 0)
+else()
+  find_library(MOSQUITTO_LIBRARY mosquitto)
+  find_path(MOSQUITTO_INCLUDE_DIR mosquitto.h)
+  if(MOSQUITTO_LIBRARY AND MOSQUITTO_INCLUDE_DIR)
+    message(STATUS "MQTT is enabled")
+    set(USE_MQTT 1)
+  elseif(USE_MQTT STREQUAL "ON" OR USE_MQTT STREQUAL "1")
+    message(FATAL_ERROR "USE_MQTT is ON, but libmosquitto is missing: install its development package")
+  else()
+    message(STATUS "MQTT is disabled")
+    set(USE_MQTT 0)
+  endif()
+endif()
 
 option(USE_WOLFSSL "Use WolfSSL instead of OpenSSL" OFF)
 option(TLS_KEY_LOGGING "Enable TLS session key logging (OpenSSL only)" OFF)
@@ -302,6 +333,22 @@ endif(USE_GSL)
 if(USE_SCTP)
   add_definitions("-DUSE_SCTP")
 endif(USE_SCTP)
+
+if(USE_MQTT)
+  add_definitions("-DUSE_MQTT")
+  # A static libmosquitto needs what it was built with (a TLS library of its
+  # own, whichever SIPp uses, c-ares, ...), and find_library names the
+  # archive alone. The list is taken from pkg-config, in the order the linker
+  # wants it. libmosquitto.pc as mosquitto ships it names no dependencies:
+  # then say them, -DMOSQUITTO_STATIC_LIBRARIES="mosquitto;ssl;crypto;cares".
+  if(BUILD_STATIC AND PKG_CONFIG_FOUND AND NOT MOSQUITTO_STATIC_LIBRARIES)
+    pkg_check_modules(MOSQUITTO_PC QUIET libmosquitto)
+    if(MOSQUITTO_PC_FOUND)
+      set(MOSQUITTO_STATIC_LIBRARIES ${MOSQUITTO_PC_STATIC_LIBRARIES})
+      set(MOSQUITTO_STATIC_LIBRARY_DIRS ${MOSQUITTO_PC_STATIC_LIBRARY_DIRS})
+    endif()
+  endif()
+endif(USE_MQTT)
 
 # Find all libraries before creating targets
 if(PKG_CONFIG_FOUND)

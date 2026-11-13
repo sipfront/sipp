@@ -78,6 +78,7 @@
 #include "reporttask.hpp"
 #include "ratetask.hpp"
 #include "watchdog.hpp"
+#include "mqtt.hpp"
 
 /*
  * If this files is included in the Main, then extern definitions
@@ -208,6 +209,8 @@ cmd messages are received */
 
 /************ User controls and command line options ***********/
 
+/* A table in columns, as the options in sipp.cpp are: kept as it is. */
+// clang-format off
 MAYBE_EXTERN int                duration                DEFVAL(0);
 MAYBE_EXTERN double             rate                    DEFVAL(DEFAULT_RATE);
 MAYBE_EXTERN bool               rate_set                DEFVAL(false);
@@ -248,6 +251,25 @@ MAYBE_EXTERN unsigned long      report_freq_dumpLog     DEFVAL
 MAYBE_EXTERN bool               rfc3339                 DEFVAL(false);
 MAYBE_EXTERN bool               periodic_rtd            DEFVAL(false);
 MAYBE_EXTERN const char       * stat_delimiter          DEFVAL(";");
+
+#ifdef USE_MQTT
+/* MQTT (mqtt.hpp): the broker, and what is published where. */
+MAYBE_EXTERN bool               mqtt_stats              DEFVAL(false);
+MAYBE_EXTERN const char       * mqtt_host               DEFVAL("localhost");
+MAYBE_EXTERN int                mqtt_port               DEFVAL(1883);
+MAYBE_EXTERN const char       * mqtt_user               DEFVAL(nullptr);
+MAYBE_EXTERN const char       * mqtt_pass               DEFVAL(nullptr);
+MAYBE_EXTERN const char       * mqtt_ca_file            DEFVAL(nullptr);
+MAYBE_EXTERN const char       * mqtt_tls_alpn           DEFVAL(nullptr);
+MAYBE_EXTERN const char       * mqtt_client_id          DEFVAL(nullptr);
+MAYBE_EXTERN int                mqtt_keepalive          DEFVAL(5);
+MAYBE_EXTERN int                mqtt_connect_timeout    DEFVAL(10);
+MAYBE_EXTERN int                mqtt_pub_qos            DEFVAL(1);
+MAYBE_EXTERN int                mqtt_shutdelay          DEFVAL(3);
+MAYBE_EXTERN const char       * mqtt_stats_topic        DEFVAL("/sipp/stats");
+MAYBE_EXTERN const char       * mqtt_countstats_topic   DEFVAL("/sipp/countstats");
+MAYBE_EXTERN const char       * mqtt_codestats_topic    DEFVAL("/sipp/codestats");
+#endif
 
 MAYBE_EXTERN bool               timeout_exit            DEFVAL(false);
 MAYBE_EXTERN bool               timeout_error           DEFVAL(false);
@@ -509,6 +531,7 @@ struct remote_address {
 };
 MAYBE_EXTERN bool          round_robin                  DEFVAL(false);
 MAYBE_EXTERN std::vector<remote_address> remote_addresses;
+// clang-format on
 
 enum E_Alter_YesNo {
     E_ALTER_YES=0,
