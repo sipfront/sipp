@@ -134,7 +134,7 @@ struct sipp_option {
 #define SIPP_OPTION_RX_INPUT_FILE 41
 #define SIPP_OPTION_NO_DEFAULTS   42
 #define SIPP_OPTION_RATE          43
-#define SIPP_OPTION_NEED_MQTT     44
+#define SIPP_OPTION_NEED_MQTT 44
 #define SIPP_HELP_TEXT_HEADER    255
 
 static char *call_id_mode_string = nullptr;

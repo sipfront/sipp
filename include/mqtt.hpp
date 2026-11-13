@@ -91,8 +91,7 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
 /* A header line and a data line of the statistics file as one JSON object,
  * {"<column>":"<value>",...}. Columns without a name are left out; a data
  * line shorter than the header gives empty strings. */
-std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
-                             const std::string &delimiter);
+std::string mqtt_csv_to_json(const std::string &header, const std::string &row, const std::string &delimiter);
 
 /* What CStat::dumpData() wrote, a header line and a data line that each end
  * with a newline, taken apart. False if the text is not these two lines. */
