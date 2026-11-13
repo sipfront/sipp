@@ -134,6 +134,7 @@ struct sipp_option {
 #define SIPP_OPTION_RX_INPUT_FILE 41
 #define SIPP_OPTION_NO_DEFAULTS   42
 #define SIPP_OPTION_RATE          43
+#define SIPP_OPTION_NEED_MQTT     44
 #define SIPP_HELP_TEXT_HEADER    255
 
 static char *call_id_mode_string = nullptr;
@@ -783,6 +784,41 @@ struct sipp_option options_table[] = {
     {"watchdog_major_maxtriggers", "How many times the major watchdog timer can be tripped before the test is terminated.  Default is 10.", SIPP_OPTION_INT, &watchdog_major_maxtriggers, 1},
     {"watchdog_minor_maxtriggers", "How many times the minor watchdog timer can be tripped before the test is terminated.  Default is 120.", SIPP_OPTION_INT, &watchdog_minor_maxtriggers, 1},
 
+
+    {"", "MQTT options:", SIPP_HELP_TEXT_HEADER, nullptr, 0},
+#ifdef USE_MQTT
+    {"mqtt_stats", "Publish the statistics to an MQTT broker every -fd interval and at the end: the columns of the -trace_stat file as one JSON object to -mqtt_stats_topic, the message counts to -mqtt_countstats_topic and the response codes of unexpected messages to -mqtt_codestats_topic. The -trace_stat file is not written then. SIPp does not start when the broker cannot be reached.", SIPP_OPTION_BOOL, &mqtt_stats, 1},
+    {"mqtt_host", "Set the host name or address of the MQTT broker. Default is 'localhost'.", SIPP_OPTION_STRING, &mqtt_host, 1},
+    {"mqtt_port", "Set the port of the MQTT broker. Default is 1883.", SIPP_OPTION_INT, &mqtt_port, 1},
+    {"mqtt_user", "Set the user name to authenticate with at the MQTT broker.", SIPP_OPTION_STRING, &mqtt_user, 1},
+    {"mqtt_pass", "Set the password to authenticate with at the MQTT broker.", SIPP_OPTION_STRING, &mqtt_pass, 1},
+    {"mqtt_ca_file", "Set the file with the CA certificates the MQTT broker's certificate is checked against. The connection uses TLS when it is given.", SIPP_OPTION_STRING, &mqtt_ca_file, 1},
+    {"mqtt_tls_alpn", "Set the TLS ALPN protocol to ask the MQTT broker for, such as 'mqtt' on a broker that shares port 443.", SIPP_OPTION_STRING, &mqtt_tls_alpn, 1},
+    {"mqtt_client_id", "Set the client id to connect to the MQTT broker with. Default is a random one.", SIPP_OPTION_STRING, &mqtt_client_id, 1},
+    {"mqtt_keepalive", "Set the keep-alive of the MQTT connection in seconds, 5 at least. Default is 5.", SIPP_OPTION_INT, &mqtt_keepalive, 1},
+    {"mqtt_connect_timeout", "Set how many seconds SIPp waits at startup for the MQTT broker to accept the connection before it gives up. Default is 10.", SIPP_OPTION_INT, &mqtt_connect_timeout, 1},
+    {"mqtt_pub_qos", "Set the QoS messages are published with: 0, 1 or 2. Default is 1.", SIPP_OPTION_INT, &mqtt_pub_qos, 1},
+    {"mqtt_shutdelay", "Set how many seconds SIPp waits at most on exit for the MQTT broker to take what is still queued. Default is 3.", SIPP_OPTION_INT, &mqtt_shutdelay, 1},
+    {"mqtt_stats_topic", "Set the MQTT topic the statistics are published to. Default is '/sipp/stats'.", SIPP_OPTION_STRING, &mqtt_stats_topic, 1},
+    {"mqtt_countstats_topic", "Set the MQTT topic the message counts are published to. Default is '/sipp/countstats'.", SIPP_OPTION_STRING, &mqtt_countstats_topic, 1},
+    {"mqtt_codestats_topic", "Set the MQTT topic the response codes of unexpected messages are published to. Default is '/sipp/codestats'.", SIPP_OPTION_STRING, &mqtt_codestats_topic, 1},
+#else
+    {"mqtt_stats", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_host", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_port", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_user", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_pass", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_ca_file", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_tls_alpn", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_client_id", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_keepalive", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_connect_timeout", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_pub_qos", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_shutdelay", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_stats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_countstats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_codestats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+#endif
 
     {"", "Tracing, logging and statistics options:", SIPP_HELP_TEXT_HEADER, nullptr, 0},
     {"f", "Set the statistics report frequency on screen. Default is 1 and default unit is seconds.", SIPP_OPTION_TIME_SEC, &report_freq, 1},
@@ -1539,6 +1575,10 @@ void sipp_exit(int rc, int rtp_errors, int echo_errors)
 
     screen_exit();
     print_last_stats();
+#ifdef USE_MQTT
+    /* The last statistics are out; the broker gets its time to take them. */
+    mqtt_shutdown();
+#endif
     print_errors();
     if (sp) {
         delete sp;
@@ -2112,6 +2152,10 @@ int main(int argc, char *argv[])
                 CHECK_PASS();
                 ERROR("SCTP support is required for the %s option.", argv[argi]);
                 break;
+            case SIPP_OPTION_NEED_MQTT:
+                CHECK_PASS();
+                ERROR("MQTT support is required for the %s option: build with -DUSE_MQTT=1.", argv[argi]);
+                break;
             case SIPP_OPTION_MAX_SOCKET:
                 REQUIRE_ARG();
                 CHECK_PASS();
@@ -2609,6 +2653,14 @@ int main(int argc, char *argv[])
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(sleeptime));
+
+#ifdef USE_MQTT
+    /* After a -bg fork, whose child would not have the connection's thread;
+     * before the first statistics. */
+    if (mqtt_stats) {
+        mqtt_setup();
+    }
+#endif
 
     /* Create the statistics reporting task. */
     stattask::initialize();

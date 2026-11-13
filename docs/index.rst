@@ -26,6 +26,7 @@ Welcome to SIPp reference documentation!
    media_impairment
    rtcp_qos
    statistics
+   mqtt
    observability
    ci_reports
    error
