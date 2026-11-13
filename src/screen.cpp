@@ -64,6 +64,12 @@ void screen_take_rtp_rates()
  * sipp.cpp. */
 int screen_readkey()
 {
+    if (noscreen) {
+        /* No screen was set up for curses to read from: the keys are
+         * taken from stdin itself, which is not blocking. */
+        unsigned char key;
+        return read(STDIN_FILENO, &key, 1) == 1 ? key : -1;
+    }
     int c = getch();
     if (c == ERR) {
         return -1;

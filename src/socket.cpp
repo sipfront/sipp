@@ -1261,8 +1261,17 @@ void process_message(SIPpSocket *socket, char *msg, ssize_t msg_size, struct soc
             scenario *s = creationMode == MODE_SERVER ? main_scenario : rx_scenario;
             out_of_call = !s->startsWith(msg) && (get_reply_code(msg) || ooc_scenario || is_auto_answered(msg));
         }
-        if (thirdPartyMode == MODE_3PCC_CONTROLLER_B || thirdPartyMode == MODE_3PCC_A_PASSIVE ||
-                thirdPartyMode == MODE_MASTER_PASSIVE || thirdPartyMode == MODE_SLAVE) {
+        const bool passive_3pcc = thirdPartyMode == MODE_3PCC_CONTROLLER_B || thirdPartyMode == MODE_3PCC_A_PASSIVE ||
+                                  thirdPartyMode == MODE_MASTER_PASSIVE || thirdPartyMode == MODE_SLAVE;
+        if (timeout_in_grace && (passive_3pcc || (!out_of_call && creationMode == MODE_MIXED))) {
+            /* -timeout_grace lets the calls that are up end and begins
+             * none, also where quitting alone would (mixed mode, the
+             * passive side of 3PCC). */
+            CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
+            TRACE_MSG("Discarded message for new calls during the timeout grace\n");
+            return;
+        }
+        if (passive_3pcc) {
             // Adding a new OUTGOING call !
             main_scenario->stats->computeStat(CStat::E_CREATE_OUTGOING_CALL);
             call *new_ptr = new call(main_scenario, call_id, local_ip_is_ipv6, 0, use_remote_sending_addr ? &remote_sending_sockaddr : &remote_sockaddr);
@@ -2639,6 +2648,11 @@ int SIPpSocket::write(const char *buffer, ssize_t len, int flags, struct sockadd
                       TRANSPORT_TO_STRING(ss_transport),
                       rc, out_len, (int)len, buffer);
         }
+#ifdef USE_MQTT
+        /* Its rest goes out with the next flush, which does not trace it
+         * (the buffer is not marked untraced): said here, once. */
+        mqtt_trace_message(&currentTime, "send", TRANSPORT_TO_STRING(ss_transport), ss_control, buffer, len);
+#endif
         /* Whole, for a new connection to send it whole. */
         buffer_write(out, out_len, dest, false);
         ss_out_tail->offset = rc;
