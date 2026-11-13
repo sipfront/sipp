@@ -126,6 +126,29 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
 std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
                              const std::string &delimiter);
 
+/* The limit on the errors that are published, and the count of those it
+ * held back. Not synchronized: mqtt_publish_error() keeps one behind its
+ * mutex. */
+class MqttErrorLimit
+{
+public:
+    /* An error in the second `second`, with -mqtt_error_rate `rate` (0 for
+     * no limit). True if it is to be published; if not, it is counted as
+     * suppressed. A fatal one always is. */
+    bool admit(time_t second, bool fatal, int rate);
+    /* What became of the message of an admitted error: taken, and the
+     * suppressed ones it reported are forgotten; or not, and they stay,
+     * with this one added. */
+    void published(bool taken);
+    unsigned long total() const { return total_; }
+    unsigned long suppressed() const { return suppressed_; }
+private:
+    unsigned long total_ = 0;
+    unsigned long suppressed_ = 0;
+    time_t second_ = 0;
+    int second_count_ = 0;
+};
+
 /* An error as it is published. */
 std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text,
                             int error, unsigned long total, unsigned long suppressed, int max_len);
