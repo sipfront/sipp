@@ -304,8 +304,8 @@ bool mqtt_publish(const char *topic, const std::string &payload, bool quiet)
         mqtt_publishing--;
         return false;
     }
-    int rc = mosquitto_publish(mqtt_client, nullptr, topic, (int)payload.length(),
-                               payload.c_str(), mqtt_pub_qos, false);
+    int rc =
+        mosquitto_publish(mqtt_client, nullptr, topic, (int)payload.length(), payload.c_str(), mqtt_pub_qos, false);
     if (rc == MOSQ_ERR_SUCCESS) {
         /* Before the shutdown is let go on: it waits for what is
          * undelivered next, and has to find this message there. */
@@ -326,8 +326,8 @@ bool mqtt_publish(const char *topic, const std::string &payload, bool quiet)
     unsigned long now = getmilliseconds();
     if (!mqtt_last_failure_report || now - mqtt_last_failure_report >= MQTT_FAILURE_REPORT_INTERVAL) {
         mqtt_last_failure_report = now ? now : 1;
-        WARNING("MQTT: could not publish to '%s': %s (%lu messages not published so far)",
-                topic, mosquitto_strerror(rc), mqtt_failed_publishes.load());
+        WARNING("MQTT: could not publish to '%s': %s (%lu messages not published so far)", topic,
+                mosquitto_strerror(rc), mqtt_failed_publishes.load());
     }
     return false;
 }

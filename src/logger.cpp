@@ -494,7 +494,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     const char* const bufEnd = &screen_last_error[bufSize];
     char* c = screen_last_error;
     _advance(c, snprintf(c, bufEnd - c, "%s: ", CStat::formatTime(&currentTime, rfc3339)));
-    const char* const text = c < bufEnd ? c : bufEnd - 1;
+    const char *const text = c < bufEnd ? c : bufEnd - 1;
     if (c < bufEnd) {
         _advance(c, vsnprintf(c, bufEnd - c, fmt, ap));
     }
