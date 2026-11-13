@@ -751,6 +751,7 @@ struct sipp_option options_table[] = {
     {"send_timeout", "Global send timeout. Default unit is milliseconds. If a message is not sent (due to congestion), the call times out and is aborted.", SIPP_OPTION_TIME_MS_LONG, &defl_send_timeout, 1},
     {"timeout", "Global timeout. Default unit is seconds.  If this option is set, SIPp quits after nb units (-timeout 20s quits after 20 seconds).", SIPP_OPTION_TIME_SEC, &global_timeout, 1},
     {"timeout_error", "SIPp fails if the global timeout is reached (-timeout option required).", SIPP_OPTION_SETFLAG, &timeout_error, 1},
+    {"timeout_grace", "When the global timeout is reached, let the calls end by themselves for that long before SIPp quits: no new call is started, a call in a pause goes on at once with what follows the pause, and what is still up when the time is over is aborted as without this option. Default unit is seconds. Default is 0: quit at once (-timeout option required).", SIPP_OPTION_TIME_SEC, &timeout_grace, 1},
     {"max_retrans", "Maximum number of UDP retransmissions before call ends on timeout.  Default is 5 for INVITE transactions and 9 for others.", SIPP_OPTION_INT, &max_udp_retrans, 1},
     {"max_invite_retrans", "Maximum number of UDP retransmissions for invite transactions before call ends on timeout.", SIPP_OPTION_INT, &max_invite_retrans, 1},
     {"max_non_invite_retrans", "Maximum number of UDP retransmissions for non-invite transactions before call ends on timeout.", SIPP_OPTION_INT, &max_non_invite_retrans, 1},
@@ -933,6 +934,15 @@ static void sipp_sigusr2(int /* not used */)
 /* ERROR() and the exit it makes are not safe in a signal handler, which
  * may have interrupted a malloc: the traffic loop acts on the timeout. */
 static std::atomic<bool> timeout_fired{false};
+/* The alarm that ends -timeout_grace (timeout_in_grace) fires
+ * timeout_fired again. When the global timeout was reached, for the error
+ * of -timeout_error, which waits for the grace to be over. */
+static unsigned long timeout_reached_at = 0;
+
+static void timeout_is_error()
+{
+    ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)timeout_reached_at / 1000LL));
+}
 
 void timeout_alarm(int /*param*/)
 {
@@ -1000,11 +1010,33 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
 
         if (timeout_fired) {
             timeout_fired = false;
-            if (timeout_error) {
-                ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)clock_tick / 1000LL));
+            const bool grace_begins = timeout_grace > 0 && !timeout_in_grace && quitting < 11;
+            if (!timeout_in_grace) {
+                timeout_reached_at = clock_tick;
             }
-            quitting = 11;
+            if (timeout_error && !grace_begins) {
+                /* At once without a grace, and when the grace is over.
+                 * While it lasts the calls are let to end first: the
+                 * error is made where the loop leaves. */
+                timeout_is_error();
+            }
             timeout_exit = true;
+            if (grace_begins) {
+                /* No new calls, and those in a pause go on to their end; the
+                 * alarm comes back when the grace is over. The loop leaves as
+                 * soon as no call is up. */
+                timeout_in_grace = true;
+                if (!quitting) {
+                    quitting = 1;
+                }
+                end_all_pauses();
+                struct itimerval grace = {};
+                grace.it_value.tv_sec = timeout_grace / 1000;
+                grace.it_value.tv_usec = (timeout_grace % 1000) * 1000;
+                setitimer(ITIMER_REAL, &grace, nullptr);
+            } else {
+                quitting = 11;
+            }
         }
 
         if (signalDump) {
@@ -1041,7 +1073,23 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
         }
         if (quitting) {
             /* Quitting and no more opened calls, close all */
-            if ((quitting >= 11) || !main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall)) {
+            bool calls_up = main_scenario->stats->GetStat(CStat::CPT_C_CurrentCall);
+            if (timeout_in_grace) {
+                /* The grace is for every call that is up: also those that
+                 * came in (mixed mode) and those of the out-of-call
+                 * scenario, which the main scenario's count leaves out. */
+                for (scenario *s : {rx_scenario, ooc_scenario}) {
+                    if (s && s->stats->GetStat(CStat::CPT_C_CurrentCall)) {
+                        calls_up = true;
+                    }
+                }
+            }
+            if ((quitting >= 11) || !calls_up) {
+                if (timeout_in_grace && timeout_error) {
+                    /* The calls ended within the grace; it stays a run
+                     * that reached its timeout. */
+                    timeout_is_error();
+                }
                 /* We can have calls that do not count towards our open-call count (e.g., dead calls). */
                 abort_all_tasks();
                 rtp_errors = rtpstream_shutdown();

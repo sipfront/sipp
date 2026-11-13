@@ -100,6 +100,12 @@ all. Reaching the timeout is therefore not an error by itself, even if
 fewer calls than asked for with ``-m`` were made. Add ``-timeout_error``
 to make reaching the timeout a fatal error (exit code -1).
 
+With ``-timeout_grace`` the calls that are up at the timeout get that long
+to end by themselves: no new call begins, also not in mixed mode or on the
+passive side of 3PCC, and a call in a pause goes on at once. SIPp quits as
+soon as no call is up, in any of its scenarios, or when the grace is over. ``-timeout_error`` makes
+its fatal error then, not at the timeout itself.
+
 Depending on the system that SIPp is running on, you can echo this
 exit code by using "echo ?" command.
 
