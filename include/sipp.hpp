@@ -268,6 +268,7 @@ MAYBE_EXTERN int                mqtt_shutdelay          DEFVAL(3);
 MAYBE_EXTERN const char       * mqtt_stats_topic        DEFVAL("/sipp/stats");
 MAYBE_EXTERN const char       * mqtt_countstats_topic   DEFVAL("/sipp/countstats");
 MAYBE_EXTERN const char       * mqtt_codestats_topic    DEFVAL("/sipp/codestats");
+MAYBE_EXTERN const char       * mqtt_rttstats_topic     DEFVAL("/sipp/rttstats");
 MAYBE_EXTERN bool               mqtt_ctrl               DEFVAL(false);
 MAYBE_EXTERN const char       * mqtt_ctrl_topic         DEFVAL("/sipp/ctrl");
 MAYBE_EXTERN int                mqtt_sub_qos            DEFVAL(1);

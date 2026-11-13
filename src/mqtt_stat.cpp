@@ -30,7 +30,10 @@
 
 #ifdef USE_MQTT
 
+#include <algorithm>
+#include <cmath>
 #include <fstream>
+#include <map>
 #include <sstream>
 
 #include "sipp.hpp"
@@ -165,6 +168,74 @@ static std::string member(const char *name, unsigned long value)
     return member(name, std::to_string(value));
 }
 
+/* The value below which p percent of the sorted times lie (nearest rank). */
+static double percentile(const std::vector<double> &sorted, double p)
+{
+    size_t rank = (size_t)std::ceil(p / 100.0 * sorted.size());
+    return sorted[rank ? rank - 1 : 0];
+}
+
+static std::string milliseconds(double value)
+{
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%.3f", value);
+    return buf;
+}
+
+std::string mqtt_rtt_summary_json(const std::string &lines, const std::string &delimiter)
+{
+    std::vector<std::string> order;
+    std::map<std::string, std::vector<double> > times;
+
+    size_t start = 0;
+    while (start < lines.length()) {
+        size_t end = lines.find('\n', start);
+        if (end == std::string::npos) {
+            end = lines.length();
+        }
+        std::vector<std::string> fields = mqtt_split(lines.substr(start, end - start), delimiter);
+        start = end + 1;
+        if (fields.size() < 3) {
+            continue;
+        }
+        char *rest = nullptr;
+        double time = strtod(fields[1].c_str(), &rest);
+        if (rest == fields[1].c_str() || time < 0) {
+            /* the file's header, or not a time */
+            continue;
+        }
+        std::vector<double> &of_timer = times[fields[2]];
+        if (of_timer.empty()) {
+            order.push_back(fields[2]);
+        }
+        of_timer.push_back(time);
+    }
+
+    std::string json = "[";
+    for (size_t i = 0; i < order.size(); i++) {
+        std::vector<double> &t = times[order[i]];
+        std::sort(t.begin(), t.end());
+        double sum = 0;
+        for (double v : t) {
+            sum += v;
+        }
+        if (i) {
+            json += ',';
+        }
+        json += "{" + member("Name", order[i]) + "," +
+                member("Count", (unsigned long)t.size()) + "," +
+                member("Min", milliseconds(t.front())) + "," +
+                member("Mean", milliseconds(sum / t.size())) + "," +
+                member("P50", milliseconds(percentile(t, 50))) + "," +
+                member("P90", milliseconds(percentile(t, 90))) + "," +
+                member("P95", milliseconds(percentile(t, 95))) + "," +
+                member("P99", milliseconds(percentile(t, 99))) + "," +
+                member("Max", milliseconds(t.back())) + "}";
+    }
+    json += "]";
+    return json;
+}
+
 /* A stream that CStat::dumpData() takes for its file and that keeps what is
  * written in memory. */
 class MqttStatBuffer : public std::ofstream
@@ -243,6 +314,31 @@ public:
             joined += separator;
         }
         return mqtt_csv_to_json(header, joined, separator);
+    }
+
+    /* -trace_rtt: the response times go into a buffer of ours, not into
+     * their file, from now on. Before the first of them is measured. */
+    static void capture_rtt(CStat *stat)
+    {
+        if (stat->M_outputStreamRtt) {
+            return;
+        }
+        /* CStat owns the stream it writes to and deletes it. */
+        stat->M_outputStreamRtt = new MqttStatBuffer();
+        stat->M_headerAlreadyDisplayedRtt = true;
+    }
+
+    /* The response times since the last call, as the "ResponseTimes"
+     * array; "[]" when there were none. */
+    static std::string rtt(CStat *stat)
+    {
+        MqttStatBuffer *capture = dynamic_cast<MqttStatBuffer *>(stat->M_outputStreamRtt);
+        if (!capture) {
+            return "[]";
+        }
+        /* what has not filled a -rtt_freq batch yet */
+        stat->dumpDataRtt();
+        return mqtt_rtt_summary_json(capture->take(), stat_delimiter);
     }
 };
 
@@ -338,6 +434,13 @@ static std::string codes_json(scenario *scn)
     return json;
 }
 
+void mqtt_stats_init()
+{
+    if (mqtt_stats && dumpInRtt && main_scenario && main_scenario->stats) {
+        MqttStats::capture_rtt(main_scenario->stats);
+    }
+}
+
 void mqtt_report_stats()
 {
     if (!mqtt_active() || !main_scenario || !main_scenario->stats) {
@@ -349,6 +452,13 @@ void mqtt_report_stats()
     }
     mqtt_publish(mqtt_countstats_topic, counts_json(main_scenario));
     mqtt_publish(mqtt_codestats_topic, codes_json(main_scenario));
+    if (dumpInRtt) {
+        std::string response_times = MqttStats::rtt(main_scenario->stats);
+        if (response_times != "[]") {
+            mqtt_publish(mqtt_rttstats_topic,
+                         "{" + time_members(main_scenario) + ",\"ResponseTimes\":" + response_times + "}");
+        }
+    }
 }
 
 #ifdef GTEST
@@ -398,6 +508,22 @@ TEST(mqtt, CsvToJson) {
     /* a line shorter than its header, and a name that needs escaping */
     EXPECT_EQ("{\"a\":\"1\",\"b \\\"x\\\"\":\"\"}", mqtt_csv_to_json("a;b \"x\";", "1", ";"));
     EXPECT_EQ("{}", mqtt_csv_to_json("", "", ";"));
+}
+
+TEST(mqtt, RttSummary) {
+    /* the file's header, 100 times of timer 1 (1..100 ms) and one of "setup" */
+    std::string lines = "Date_ms;response_time_ms;rtd_no\n";
+    for (int i = 100; i >= 1; i--) {
+        lines += "1794595556693.915;" + std::to_string(i) + ".000;1\n";
+    }
+    lines += "1794595556700.000;12.345;setup\n";
+    EXPECT_EQ("[{\"Name\":\"1\",\"Count\":\"100\",\"Min\":\"1.000\",\"Mean\":\"50.500\",\"P50\":\"50.000\","
+              "\"P90\":\"90.000\",\"P95\":\"95.000\",\"P99\":\"99.000\",\"Max\":\"100.000\"},"
+              "{\"Name\":\"setup\",\"Count\":\"1\",\"Min\":\"12.345\",\"Mean\":\"12.345\",\"P50\":\"12.345\","
+              "\"P90\":\"12.345\",\"P95\":\"12.345\",\"P99\":\"12.345\",\"Max\":\"12.345\"}]",
+              mqtt_rtt_summary_json(lines, ";"));
+    EXPECT_EQ("[]", mqtt_rtt_summary_json("", ";"));
+    EXPECT_EQ("[]", mqtt_rtt_summary_json("Date_ms;response_time_ms;rtd_no\n", ";"));
 }
 #endif /* GTEST */
 

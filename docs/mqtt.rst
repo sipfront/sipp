@@ -80,6 +80,22 @@ are set to.
        {"CurrentTime":"2026-11-13 18:45:53.954701",
         "ElapsedTime":"00:00:04:534000", "ErrorCodes":[503,503,486]}
 
+``-mqtt_rttstats_topic`` (default ``/sipp/rttstats``), with ``-trace_rtt``
+    The response times of the interval, per timer (``rtd``): how many there
+    were and, in milliseconds, their minimum, mean, median, 90th, 95th and
+    99th percentile and maximum. An interval without a response time
+    publishes nothing. The ``-trace_rtt`` file, which lists every single
+    time, is not written: a load test has thousands of them a second, and
+    a message that listed them would outgrow what brokers take.
+
+    .. code-block:: json
+
+       {"CurrentTime":"2026-11-13 20:47:43.814747",
+        "ElapsedTime":"00:00:01:027000",
+        "ResponseTimes":[
+          {"Name":"1","Count":"49","Min":"3.488","Mean":"4.259","P50":"4.039",
+           "P90":"5.190","P95":"5.328","P99":"7.680","Max":"7.680"}]}
+
 Remote control
 --------------
 
