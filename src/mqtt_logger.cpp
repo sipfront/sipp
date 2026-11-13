@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <mutex>
 #include <sstream>
 #include <regex>
 
@@ -31,6 +32,15 @@
 #define JQC(k, v) JQV(k, v) << ","
 
 static unsigned long total_errors = 0;
+/* Errors are published one message each, and a load test that fails produces one per
+ * call: at most mqtt_error_rate of them go out per second, the others are counted
+ * here and reported as "Suppressed" with the next message that does. */
+static unsigned long suppressed_errors = 0;
+static time_t error_window = 0;
+static int error_window_count = 0;
+/* WARNING() comes from the RTP echo threads as well as from the traffic thread:
+ * the counters above, and total_errors, change behind this. */
+static std::mutex error_limit_mutex;
 
 std::string do_replace(std::string const &in, std::string const &from, std::string const &to) {
     return std::regex_replace(in, std::regex(from), to);
@@ -215,12 +225,46 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
         return;
     }
 
-    total_errors++;
-
     struct timeval currentTime;
     GET_TIME(&currentTime);
 
+    unsigned long total, suppressed;
+    {
+        std::lock_guard<std::mutex> lock(error_limit_mutex);
+        total = ++total_errors;
+        /* A fatal error is the last thing said and always goes out. */
+        if (!fatal && mqtt_error_rate > 0) {
+            if (currentTime.tv_sec != error_window) {
+                error_window = currentTime.tv_sec;
+                error_window_count = 0;
+            }
+            if (error_window_count >= mqtt_error_rate) {
+                suppressed_errors++;
+                return;
+            }
+            error_window_count++;
+        }
+        /* this message reports what was held back before it */
+        suppressed = suppressed_errors;
+        suppressed_errors = 0;
+    }
+
     vsnprintf(buf, sizeof(buf), fmt, ap);
+    /* the start says what went wrong; an unexpected message is cut, not dropped.
+     * The marker and its NUL have to fit behind the cut. */
+    static const char cut_marker[] = "...";
+    size_t max_len = mqtt_error_max_len > 0 ? (size_t)mqtt_error_max_len : 0;
+    if (max_len > sizeof(buf) - sizeof(cut_marker)) {
+        max_len = sizeof(buf) - sizeof(cut_marker);
+    }
+    if (max_len > 0 && strlen(buf) > max_len) {
+        /* not in the middle of a UTF-8 character, whose first bytes alone
+         * would make the message invalid JSON */
+        while (max_len > 0 && ((unsigned char)buf[max_len] & 0xc0) == 0x80) {
+            max_len--;
+        }
+        memcpy(buf + max_len, cut_marker, sizeof(cut_marker));
+    }
     std::string strbuf = do_replace(std::string(buf), "\r?\n", "\\r\\n");
     strbuf = do_replace(strbuf, "\"", "\\\"");
 
@@ -229,7 +273,8 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
 		<< JQC(CurrentTime, CStat::formatTime(&currentTime, true))
         << JQC(Content, strbuf)
         << JQC(Fatal, fatal)
-        << JQC(Total, total_errors);
+        << JQC(Total, total)
+        << JQC(Suppressed, suppressed);
     
     if (use_errno) {
 	    jsonData << JQC(ErrnoString, strerror(error));
