@@ -209,6 +209,8 @@ cmd messages are received */
 
 /************ User controls and command line options ***********/
 
+/* A table in columns, as the options in sipp.cpp are: kept as it is. */
+// clang-format off
 MAYBE_EXTERN int                duration                DEFVAL(0);
 MAYBE_EXTERN double             rate                    DEFVAL(DEFAULT_RATE);
 MAYBE_EXTERN bool               rate_set                DEFVAL(false);
@@ -538,6 +540,7 @@ struct remote_address {
 };
 MAYBE_EXTERN bool          round_robin                  DEFVAL(false);
 MAYBE_EXTERN std::vector<remote_address> remote_addresses;
+// clang-format on
 
 enum E_Alter_YesNo {
     E_ALTER_YES=0,
