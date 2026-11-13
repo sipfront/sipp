@@ -1624,6 +1624,13 @@ void sipp_exit(int rc, int rtp_errors, int echo_errors)
         already_exited = 1;
     }
 
+#ifdef USE_CURL
+    /* Before the last statistics and the error log close: what the
+     * <curl> requests still under way come to is reported with them. And
+     * before the warning below, which is to stay the last one said. */
+    sipp_curl_shutdown();
+#endif
+
     /* Before the error file closes, and shown on stderr as the last
      * error: nothing else tells why the exit code is 253. */
     if (rc == EXIT_TEST_RES_UNKNOWN && (rtp_errors > 0 || echo_errors > 0)) {
@@ -1649,11 +1656,6 @@ void sipp_exit(int rc, int rtp_errors, int echo_errors)
         print_screens();
     }
 
-#ifdef USE_CURL
-    /* Before the last statistics and the error log close: what the
-     * <curl> requests still under way come to is reported with them. */
-    sipp_curl_shutdown();
-#endif
     screen_exit();
     print_last_stats();
 #ifdef USE_MQTT
