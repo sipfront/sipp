@@ -1364,6 +1364,16 @@ void CStat::dumpDataRtt ()
     if (M_counterDumpRespTime == 0) {
         return;
     }
+    if (M_captureRtt) {
+        for (unsigned int L_i = 0; L_i < M_counterDumpRespTime ; L_i ++) {
+            M_capturedRtt.emplace_back(M_dumpRespTime[L_i].rtd_no, M_dumpRespTime[L_i].rtt);
+            M_dumpRespTime[L_i].date = 0.0;
+            M_dumpRespTime[L_i].rtt = 0.0;
+            M_dumpRespTime[L_i].rtd_no = 0;
+        }
+        M_counterDumpRespTime = 0;
+        return;
+    }
     if(M_outputStreamRtt == nullptr) {
         // if the file is still not opened, we opened it now
         M_outputStreamRtt = new std::ofstream(M_fileNameRtt);

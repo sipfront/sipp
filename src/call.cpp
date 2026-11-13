@@ -1494,6 +1494,16 @@ int call::_callDebug(const char *fmt, ...)
     return ret;
 }
 
+/* The challenge [authentication] answers from now on, and whether it came
+ * with a 401 or a 407. */
+void call::setChallenge(std::string_view challenge, int reply_code)
+{
+    call_cold &c = cold();
+    c.dialog_authentication = challenge;
+    c.dialog_challenge_type = reply_code;
+    c.next_nonce_count = 1;
+}
+
 /* -timeout_grace: a call in a <pause> goes on with what follows it, which is
  * usually how it ends. A call that waits for a message keeps waiting. */
 void call::end_pause()
@@ -2893,6 +2903,22 @@ bool call::abortCall(bool writeLog)
      * index no step has, not that of the step before it, which would be
      * the ACK's after a 2xx. */
     int byeIndex = call_scenario->messages.size();
+    /* -reuse_user_callid: the BYE below is a request [cseq] did not count.
+     * It is "[last_cseq_number+1]", and the user's next call, which goes
+     * on in the same Call-ID, has to begin after it. */
+    auto count_bye = [this]() {
+        if (!reuse_users_callid) {
+            return;
+        }
+        unsigned int bye_cseq = cseq + 1;
+        const header_value last_header = get_last_header("CSeq:");
+        if (!bye_after_peer_request && !last_header.empty()) {
+            bye_cseq = header_number(last_header.view().substr(strlen("CSeq:"))) + 1;
+        }
+        if (bye_cseq > cseq) {
+            cseq = bye_cseq;
+        }
+    };
 
     if (createsDialog() && (msg_index > 0)) {
         if ((call_established == false) && (is_inv)) {
@@ -2912,6 +2938,7 @@ bool call::abortCall(bool writeLog)
                     /* Send the BYE */
                     sendBuffer(createSendingMessage(get_default_message("bye"), byeIndex));
                     sent_bye = true;
+                    count_bye();
                 } else {
                     /* Send a CANCEL */
                     sendBuffer(createSendingMessage(get_default_message("cancel")));
@@ -2934,6 +2961,7 @@ bool call::abortCall(bool writeLog)
             bye_after_peer_request = !get_reply_code(last_recv_msg.c_str());
             sendBuffer(createSendingMessage(get_default_message("bye"), byeIndex));
             sent_bye = true;
+            count_bye();
         }
     }
 
@@ -3554,11 +3582,16 @@ std::string call::buildSendingMessage(SendingMessage *src, int P_index, char *sc
         /* -auth_optional: no challenge yet, so no credentials. The keyword
          * goes, and with it the line it stands alone on: an empty line would
          * end the headers. */
-        size_t end = out.find(']', auth_marker) + 1;
-        if ((auth_marker == 0 || out[auth_marker - 1] == '\n') && out.compare(end, 2, "\r\n") == 0) {
-            end += 2;
+        size_t end = auth_marker < out.size() ? out.find(']', auth_marker) : std::string::npos;
+        if (end != std::string::npos) {
+            end++;
+            if ((auth_marker == 0 || out[auth_marker - 1] == '\n') && out.compare(end, 2, "\r\n") == 0) {
+                end += 2;
+            }
+            out.erase(auth_marker, end - auth_marker);
         }
-        out.erase(auth_marker, end - auth_marker);
+        /* else a [len] without an end of the headers took the keyword
+         * with what followed it */
         auth_marker = std::string::npos;
     }
     if (auth_marker != std::string::npos) {
@@ -4727,13 +4760,8 @@ bool call::process_incoming(const char* msg, const struct sockaddr_storage* src,
         if (auth.empty()) {
             ERROR("Couldn't find 'Proxy-Authenticate' or 'WWW-Authenticate' in 401 or 407!");
         }
-        call_cold &c = cold();
-        c.dialog_authentication = selectAuthChallenge(auth.view());
-
-        /* Store the code of the challenge for building the proper header */
-        c.dialog_challenge_type = reply_code;
-
-        c.next_nonce_count = 1;
+        /* With the code of the challenge, for building the proper header */
+        setChallenge(selectAuthChallenge(auth.view()), reply_code);
     }
 
     /* If we are not advancing state, we should quite before we change this stuff. */
@@ -6181,6 +6209,7 @@ public:
         assign_exact(last_recv_msg, msg);
     }
     void parse_media_addr(std::string const& msg) { get_remote_media_addr(msg); }
+    using call::setChallenge;
     int parse_srtp(const char *msg, SrtpInfoParams &pA, SrtpInfoParams &pV)
     {
         return extract_srtp_remote_info(msg, pA, pV);
@@ -6582,6 +6611,63 @@ TEST(create_sending_message, string_leaves_the_message_buffer)
 
     EXPECT_EQ("abc", test_call.createSendingString(&text));
     EXPECT_STREQ("BYE sip:a@b SIP/2.0\r\nContent-Length:     0\r\n\r\n", out);
+}
+
+/* -auth_optional for the length of a test. */
+struct auth_optional_guard {
+    auth_optional_guard() { auth_optional = true; }
+    ~auth_optional_guard() { auth_optional = false; }
+};
+
+TEST(create_sending_message, optional_authentication_leaves_its_line_out)
+{
+    auth_optional_guard optional;
+    mockcall test_call(false);
+    /* before Content-Length, with a header and a body after it */
+    SendingMessage before(main_scenario,
+                          "REGISTER sip:a@b SIP/2.0\n[authentication]\nContent-Length: [len]\nX-Foo: bar\n\nabc\n", true);
+    int len = -1;
+    const char *out = test_call.createSendingMessage(&before, -1, &len);
+    EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     5\r\nX-Foo: bar\r\n\r\nabc\r\n", out);
+    EXPECT_EQ((size_t)len, strlen(out));
+
+    /* after Content-Length, the last header before the body */
+    SendingMessage after(main_scenario,
+                         "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\nabc\n", true);
+    out = test_call.createSendingMessage(&after, -1, &len);
+    EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     5\r\n\r\nabc\r\n", out);
+    EXPECT_EQ((size_t)len, strlen(out));
+
+    /* the last header of a message without a body */
+    SendingMessage no_body(main_scenario,
+                           "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\n", true);
+    out = test_call.createSendingMessage(&no_body, -1, &len);
+    EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     0\r\n\r\n", out);
+    EXPECT_EQ((size_t)len, strlen(out));
+}
+
+TEST(create_sending_message, optional_authentication_answers_a_challenge)
+{
+    auth_optional_guard optional;
+    mockcall test_call(false);
+    SendingMessage msg(main_scenario,
+                       "REGISTER sip:a@b SIP/2.0\n[authentication username=alice password=secret]\n"
+                       "Content-Length: [len]\nX-Foo: bar\n\nabc\n", false /* the method is needed */);
+    test_call.setChallenge("Digest realm=\"test\", nonce=\"abcdef\"", 401);
+    int len = -1;
+    const char *out = test_call.createSendingMessage(&msg, -1, &len);
+
+    EXPECT_EQ(out, strstr(out, "REGISTER sip:a@b SIP/2.0\r\nAuthorization: Digest username=\"alice\",realm=\"test\""));
+    EXPECT_NE(nullptr, strstr(out, "\r\nContent-Length:     5\r\nX-Foo: bar\r\n\r\nabc\r\n"));
+    EXPECT_EQ((size_t)len, strlen(out));
+}
+
+TEST(create_sending_message, authentication_without_a_challenge_is_an_error)
+{
+    mockcall test_call(false);
+    SendingMessage msg(main_scenario, "REGISTER sip:a@b SIP/2.0\n[authentication]\nContent-Length: [len]\n\n", true);
+    ASSERT_FALSE(auth_optional);
+    EXPECT_DEATH(test_call.createSendingMessage(&msg, -1), "Authentication keyword without dialog_authentication");
 }
 
 TEST(call_run, stops_after_fatal_retransmission_send_error) {
