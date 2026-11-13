@@ -541,13 +541,23 @@ int handle_ctrl_socket()
         return ret;
     }
 
-    if (bufrcv[0] == 'c') {
-        std::string command(reinterpret_cast<char *>(bufrcv + 1), ret - 1);
+    process_control_message(reinterpret_cast<char *>(bufrcv), ret);
+    return 0;
+}
+
+/* What the control socket takes, from wherever it comes (the socket, MQTT):
+ * a key as on the keyboard, or 'c' and a command such as "cset rate 10". */
+void process_control_message(const char *message, size_t len)
+{
+    if (!len) {
+        return;
+    }
+    if (message[0] == 'c') {
+        std::string command(message + 1, len - 1);
         process_command(command.data());
     } else {
-        process_key(bufrcv[0]);
+        process_key(message[0]);
     }
-    return 0;
 }
 
 void setup_ctrl_socket()

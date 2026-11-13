@@ -25,6 +25,9 @@
 
 #include <atomic>
 #include <chrono>
+#include <deque>
+#include <mutex>
+#include <string>
 #include <thread>
 
 #include <mosquitto.h>
@@ -49,6 +52,17 @@ static std::atomic<int> mqtt_disconnect_reason(0);
  * sent for QoS 0, acknowledged by the broker for QoS 1 and 2. */
 static std::atomic<long> mqtt_undelivered(0);
 
+/* Control messages on their way from libmosquitto's thread to the main loop.
+ * A sender that floods the topic gets its oldest messages dropped, not SIPp's
+ * memory. */
+static std::mutex mqtt_control_mutex;
+static std::deque<std::string> mqtt_control_queue;
+static std::atomic<bool> mqtt_control_pending(false);
+static std::atomic<unsigned long> mqtt_control_dropped(0);
+static const size_t MQTT_CONTROL_QUEUE_MAX = 256;
+/* The result of the last subscribe, a MOSQ_ERR_* value. */
+static std::atomic<int> mqtt_subscribe_result(0);
+
 /* Main thread only. */
 static bool mqtt_was_connected = false;
 static unsigned long mqtt_failed_publishes = 0;
@@ -57,10 +71,29 @@ static unsigned long mqtt_last_failure_report = 0;
 /* How often, at most, a failing publish is reported (ms). */
 static const unsigned long MQTT_FAILURE_REPORT_INTERVAL = 5000;
 
-static void on_connect(struct mosquitto *, void *, int rc)
+static void on_connect(struct mosquitto *client, void *, int rc)
 {
     mqtt_connack = rc;
+    if (rc == 0 && mqtt_ctrl) {
+        /* On every connect: the session is a clean one, the broker does
+         * not remember the subscription over a reconnect. */
+        mqtt_subscribe_result = mosquitto_subscribe(client, nullptr, mqtt_ctrl_topic, mqtt_sub_qos);
+    }
     mqtt_connected = (rc == 0);
+}
+
+static void on_message(struct mosquitto *, void *, const struct mosquitto_message *message)
+{
+    if (!message->payload || message->payloadlen <= 0) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mqtt_control_mutex);
+    if (mqtt_control_queue.size() >= MQTT_CONTROL_QUEUE_MAX) {
+        mqtt_control_queue.pop_front();
+        mqtt_control_dropped++;
+    }
+    mqtt_control_queue.emplace_back((const char *)message->payload, (size_t)message->payloadlen);
+    mqtt_control_pending = true;
 }
 
 static void on_disconnect(struct mosquitto *, void *, int rc)
@@ -109,6 +142,9 @@ void mqtt_setup()
         /* libmosquitto refuses less. */
         ERROR("-mqtt_keepalive must be at least 5 seconds, not %d", mqtt_keepalive);
     }
+    if (mqtt_sub_qos < 0 || mqtt_sub_qos > 2) {
+        ERROR("-mqtt_sub_qos must be 0, 1 or 2, not %d", mqtt_sub_qos);
+    }
 
     mosquitto_lib_init();
     mqtt_client = mosquitto_new(mqtt_client_id, true, nullptr);
@@ -138,6 +174,7 @@ void mqtt_setup()
     mosquitto_connect_callback_set(mqtt_client, on_connect);
     mosquitto_disconnect_callback_set(mqtt_client, on_disconnect);
     mosquitto_publish_callback_set(mqtt_client, on_publish);
+    mosquitto_message_callback_set(mqtt_client, on_message);
     /* A lost connection is made again after 1 s, then 2, 4, ... up to 30. */
     mosquitto_reconnect_delay_set(mqtt_client, 1, 30, true);
 
@@ -171,6 +208,11 @@ void mqtt_setup()
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
     mqtt_was_connected = true;
+    if (mqtt_ctrl && mqtt_subscribe_result != MOSQ_ERR_SUCCESS) {
+        int result = mqtt_subscribe_result;
+        mqtt_shutdown();
+        ERROR("MQTT: could not subscribe to the control topic '%s': %s", mqtt_ctrl_topic, mosquitto_strerror(result));
+    }
 }
 
 bool mqtt_publish(const char *topic, const std::string &payload)
@@ -197,6 +239,26 @@ bool mqtt_publish(const char *topic, const std::string &payload)
                 topic, mosquitto_strerror(rc), mqtt_failed_publishes);
     }
     return false;
+}
+
+void mqtt_poll()
+{
+    if (!mqtt_control_pending) {
+        return;
+    }
+    std::deque<std::string> messages;
+    {
+        std::lock_guard<std::mutex> lock(mqtt_control_mutex);
+        messages.swap(mqtt_control_queue);
+        mqtt_control_pending = false;
+    }
+    unsigned long dropped = mqtt_control_dropped.exchange(0);
+    if (dropped) {
+        WARNING("MQTT: %lu control messages dropped, they came faster than they could be run", dropped);
+    }
+    for (const std::string &message : messages) {
+        process_control_message(message.data(), message.length());
+    }
 }
 
 void mqtt_shutdown()

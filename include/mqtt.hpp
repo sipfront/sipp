@@ -46,6 +46,13 @@
  *   -mqtt_codestats_topic   the response codes of the unexpected messages
  *                           since the last interval (-trace_error_codes).
  *
+ * Remote control (-mqtt_ctrl)
+ *
+ *   SIPp subscribes to -mqtt_ctrl_topic and takes each message as the control
+ *   socket takes a datagram: a key, or 'c' and a command ("cset rate 10").
+ *   The messages arrive in libmosquitto's thread, which only queues them;
+ *   the main loop takes them from the queue (mqtt_poll) and runs them.
+ *
  * See docs/mqtt.rst for the options and the messages.
  */
 
@@ -71,6 +78,10 @@ bool mqtt_publish(const char *topic, const std::string &payload);
 
 /* True between a successful mqtt_setup() and mqtt_shutdown(). */
 bool mqtt_active();
+
+/* Run the control messages that arrived since the last call. Called by the
+ * main loop on every pass; does nothing without -mqtt_ctrl. */
+void mqtt_poll();
 
 /* Publish the statistics, the message counts and the error codes of the main
  * scenario. Called by the statistics task every -fd interval and at exit. */
