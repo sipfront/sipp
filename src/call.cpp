@@ -3547,10 +3547,21 @@ std::string call::buildSendingMessage(SendingMessage *src, int P_index, char *sc
      * loop because auth-int will use the body (which must have already
      * been keyword substituted) to build the md5 hash
      */
-    if (auth_marker != std::string::npos) {
-        if (peekCold().dialog_authentication.empty()) {
+    if (auth_marker != std::string::npos && peekCold().dialog_authentication.empty()) {
+        if (!auth_optional) {
             ERROR("Authentication keyword without dialog_authentication!");
         }
+        /* -auth_optional: no challenge yet, so no credentials. The keyword
+         * goes, and with it the line it stands alone on: an empty line would
+         * end the headers. */
+        size_t end = out.find(']', auth_marker) + 1;
+        if ((auth_marker == 0 || out[auth_marker - 1] == '\n') && out.compare(end, 2, "\r\n") == 0) {
+            end += 2;
+        }
+        out.erase(auth_marker, end - auth_marker);
+        auth_marker = std::string::npos;
+    }
+    if (auth_marker != std::string::npos) {
         call_cold &auth = *cold_state;
 
         const size_t auth_marker_len = out.find(']', auth_marker) + 1 - auth_marker;
