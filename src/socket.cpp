@@ -2639,6 +2639,11 @@ int SIPpSocket::write(const char *buffer, ssize_t len, int flags, struct sockadd
                       TRANSPORT_TO_STRING(ss_transport),
                       rc, out_len, (int)len, buffer);
         }
+#ifdef USE_MQTT
+        /* Its rest goes out with the next flush, which does not trace it
+         * (the buffer is not marked untraced): said here, once. */
+        mqtt_trace_message(&currentTime, "send", TRANSPORT_TO_STRING(ss_transport), ss_control, buffer, len);
+#endif
         /* Whole, for a new connection to send it whole. */
         buffer_write(out, out_len, dest, false);
         ss_out_tail->offset = rc;
