@@ -2883,6 +2883,22 @@ bool call::abortCall(bool writeLog)
      * index no step has, not that of the step before it, which would be
      * the ACK's after a 2xx. */
     int byeIndex = call_scenario->messages.size();
+    /* -reuse_user_callid: the BYE below is a request [cseq] did not count.
+     * It is "[last_cseq_number+1]", and the user's next call, which goes
+     * on in the same Call-ID, has to begin after it. */
+    auto count_bye = [this]() {
+        if (!reuse_users_callid) {
+            return;
+        }
+        unsigned int bye_cseq = cseq + 1;
+        const header_value last_header = get_last_header("CSeq:");
+        if (!bye_after_peer_request && !last_header.empty()) {
+            bye_cseq = header_number(last_header.view().substr(strlen("CSeq:"))) + 1;
+        }
+        if (bye_cseq > cseq) {
+            cseq = bye_cseq;
+        }
+    };
 
     if (createsDialog() && (msg_index > 0)) {
         if ((call_established == false) && (is_inv)) {
@@ -2902,6 +2918,7 @@ bool call::abortCall(bool writeLog)
                     /* Send the BYE */
                     sendBuffer(createSendingMessage(get_default_message("bye"), byeIndex));
                     sent_bye = true;
+                    count_bye();
                 } else {
                     /* Send a CANCEL */
                     sendBuffer(createSendingMessage(get_default_message("cancel")));
@@ -2924,6 +2941,7 @@ bool call::abortCall(bool writeLog)
             bye_after_peer_request = !get_reply_code(last_recv_msg.c_str());
             sendBuffer(createSendingMessage(get_default_message("bye"), byeIndex));
             sent_bye = true;
+            count_bye();
         }
     }
 
