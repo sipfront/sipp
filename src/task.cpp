@@ -77,9 +77,7 @@ void abort_all_tasks()
  * between the running and the paused lists, not within all_tasks. */
 void end_all_pauses()
 {
-    for (task_list::iterator task_it = all_tasks.begin();
-         task_it != all_tasks.end();
-         ++task_it) {
+    for (task_list::iterator task_it = all_tasks.begin(); task_it != all_tasks.end(); ++task_it) {
         (*task_it)->end_pause();
     }
 }
