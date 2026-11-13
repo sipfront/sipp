@@ -31,6 +31,12 @@
 #define JQC(k, v) JQV(k, v) << ","
 
 static unsigned long total_errors = 0;
+/* Errors are published one message each, and a load test that fails produces one per
+ * call: at most mqtt_error_rate of them go out per second, the others are counted
+ * here and reported as "Suppressed" with the next message that does. */
+static unsigned long suppressed_errors = 0;
+static time_t error_window = 0;
+static int error_window_count = 0;
 
 std::string do_replace(std::string const &in, std::string const &from, std::string const &to) {
     return std::regex_replace(in, std::regex(from), to);
@@ -220,7 +226,24 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
     struct timeval currentTime;
     GET_TIME(&currentTime);
 
+    /* A fatal error is the last thing said and always goes out. */
+    if (!fatal && mqtt_error_rate > 0) {
+        if (currentTime.tv_sec != error_window) {
+            error_window = currentTime.tv_sec;
+            error_window_count = 0;
+        }
+        if (error_window_count >= mqtt_error_rate) {
+            suppressed_errors++;
+            return;
+        }
+        error_window_count++;
+    }
+
     vsnprintf(buf, sizeof(buf), fmt, ap);
+    if (mqtt_error_max_len > 0 && strlen(buf) > (size_t)mqtt_error_max_len) {
+        /* the start says what went wrong; an unexpected message is cut, not dropped */
+        strcpy(buf + mqtt_error_max_len, "...");
+    }
     std::string strbuf = do_replace(std::string(buf), "\r?\n", "\\r\\n");
     strbuf = do_replace(strbuf, "\"", "\\\"");
 
@@ -229,7 +252,9 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
 		<< JQC(CurrentTime, CStat::formatTime(&currentTime, true))
         << JQC(Content, strbuf)
         << JQC(Fatal, fatal)
-        << JQC(Total, total_errors);
+        << JQC(Total, total_errors)
+        << JQC(Suppressed, suppressed_errors);
+    suppressed_errors = 0;
     
     if (use_errno) {
 	    jsonData << JQC(ErrnoString, strerror(error));
