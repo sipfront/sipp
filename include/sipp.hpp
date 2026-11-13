@@ -266,6 +266,8 @@ MAYBE_EXTERN int                mqtt_port               DEFVAL(1883);
 MAYBE_EXTERN const char *       mqtt_user               DEFVAL(NULL);
 MAYBE_EXTERN const char *       mqtt_pass               DEFVAL(NULL);
 MAYBE_EXTERN int                mqtt_pub_qos            DEFVAL(1);
+MAYBE_EXTERN int                mqtt_error_rate         DEFVAL(2);
+MAYBE_EXTERN int                mqtt_error_max_len      DEFVAL(4096);
 MAYBE_EXTERN int                mqtt_sub_qos            DEFVAL(1);
 MAYBE_EXTERN const char *       mqtt_ca_file            DEFVAL(NULL);
 MAYBE_EXTERN const char *       mqtt_tls_alpn           DEFVAL(NULL);
