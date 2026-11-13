@@ -114,8 +114,8 @@ void mqtt_publish_error(const struct timeval *now, bool fatal, const std::string
 
 /* Publish a SIP message that was sent ("send") or received ("recv") to
  * -mqtt_message_topic, if -trace_msg or -trace_shortmsg ask for it. */
-void mqtt_trace_message(const struct timeval *now, const char *direction, const char *transport,
-                        bool control, const char *buffer, size_t len);
+void mqtt_trace_message(const struct timeval *now, const char *direction, const char *transport, bool control,
+                        const char *buffer, size_t len);
 
 /* ---- the pieces the messages are made of (no connection needed) ---- */
 
@@ -132,8 +132,7 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
 /* A header line and a data line of the statistics file as one JSON object,
  * {"<column>":"<value>",...}. Columns without a name are left out; a data
  * line shorter than the header gives empty strings. */
-std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
-                             const std::string &delimiter);
+std::string mqtt_csv_to_json(const std::string &header, const std::string &row, const std::string &delimiter);
 
 /* Response times, each the name of its timer and its milliseconds, as the
  * "ResponseTimes" array: one object per timer, in the order the timers
@@ -154,8 +153,15 @@ public:
      * suppressed ones it reported are forgotten; or not, and they stay,
      * with this one added. */
     void published(bool taken);
-    unsigned long total() const { return total_; }
-    unsigned long suppressed() const { return suppressed_; }
+    unsigned long total() const
+    {
+        return total_;
+    }
+    unsigned long suppressed() const
+    {
+        return suppressed_;
+    }
+
 private:
     unsigned long total_ = 0;
     unsigned long suppressed_ = 0;
@@ -164,8 +170,8 @@ private:
 };
 
 /* An error as it is published. */
-std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text,
-                            int error, unsigned long total, unsigned long suppressed, int max_len);
+std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text, int error,
+                            unsigned long total, unsigned long suppressed, int max_len);
 
 /* A SIP message as it is published. */
 std::string mqtt_message_json(const struct timeval *now, const std::string &call_id, const char *direction,
