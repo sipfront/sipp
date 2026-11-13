@@ -1248,7 +1248,8 @@ void process_message(SIPpSocket *socket, char *msg, ssize_t msg_size, struct soc
                   msg_size, msg);
     }
 #ifdef USE_MQTT
-    mqtt_trace_message(&currentTime, "recv", TRANSPORT_TO_STRING(socket->ss_transport), socket->ss_control, msg, msg_size);
+    mqtt_trace_message(&currentTime, "recv", TRANSPORT_TO_STRING(socket->ss_transport), socket->ss_control, msg,
+                       msg_size);
 #endif
 
     // got as message not relating to a known call
