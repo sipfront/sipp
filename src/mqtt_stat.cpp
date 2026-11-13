@@ -205,10 +205,10 @@ static std::string milliseconds(double value)
     return out.str();
 }
 
-std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, double> > &measured)
+std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, double>> &measured)
 {
     std::vector<std::string> order;
-    std::map<std::string, std::vector<double> > times;
+    std::map<std::string, std::vector<double>> times;
 
     for (const std::pair<std::string, double> &one : measured) {
         std::vector<double> &of_timer = times[one.first];
@@ -229,15 +229,11 @@ std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, doubl
         if (i) {
             json += ',';
         }
-        json += "{" + member("Name", order[i]) + "," +
-                member("Count", (unsigned long)t.size()) + "," +
-                member("Min", milliseconds(t.front())) + "," +
-                member("Mean", milliseconds(sum / t.size())) + "," +
-                member("P50", milliseconds(percentile(t, 50))) + "," +
-                member("P90", milliseconds(percentile(t, 90))) + "," +
-                member("P95", milliseconds(percentile(t, 95))) + "," +
-                member("P99", milliseconds(percentile(t, 99))) + "," +
-                member("Max", milliseconds(t.back())) + "}";
+        json += "{" + member("Name", order[i]) + "," + member("Count", (unsigned long)t.size()) + "," +
+                member("Min", milliseconds(t.front())) + "," + member("Mean", milliseconds(sum / t.size())) + "," +
+                member("P50", milliseconds(percentile(t, 50))) + "," + member("P90", milliseconds(percentile(t, 90))) +
+                "," + member("P95", milliseconds(percentile(t, 95))) + "," +
+                member("P99", milliseconds(percentile(t, 99))) + "," + member("Max", milliseconds(t.back())) + "}";
     }
     json += "]";
     return json;
@@ -335,7 +331,7 @@ public:
         }
         /* what has not filled a -rtt_freq batch yet */
         stat->dumpDataRtt();
-        std::vector<std::pair<std::string, double> > times;
+        std::vector<std::pair<std::string, double>> times;
         times.reserve(stat->M_capturedRtt.size());
         for (const std::pair<int, double> &one : stat->M_capturedRtt) {
             times.emplace_back(stat->M_revRtdMap[one.first], one.second);
@@ -481,9 +477,8 @@ void mqtt_report_stats()
             }
             std::string response_times = MqttStats::rtt((*s.scn)->stats);
             if (response_times != "[]") {
-                mqtt_publish(mqtt_rttstats_topic,
-                             "{" + time_members(main_scenario) + "," + member("Scenario", s.name) +
-                             ",\"ResponseTimes\":" + response_times + "}");
+                mqtt_publish(mqtt_rttstats_topic, "{" + time_members(main_scenario) + "," + member("Scenario", s.name) +
+                                                      ",\"ResponseTimes\":" + response_times + "}");
             }
         }
     }
@@ -543,9 +538,10 @@ TEST(mqtt, CsvToJson)
     EXPECT_EQ("{}", mqtt_csv_to_json("", "", ";"));
 }
 
-TEST(mqtt, RttSummary) {
+TEST(mqtt, RttSummary)
+{
     /* 100 times of timer 1 (1..100 ms) and one of "setup" */
-    std::vector<std::pair<std::string, double> > times;
+    std::vector<std::pair<std::string, double>> times;
     for (int i = 100; i >= 1; i--) {
         times.emplace_back("1", i);
     }
@@ -573,7 +569,8 @@ TEST(mqtt, RttSummary) {
               mqtt_rtt_summary_json({{"setup;auth", 1.5}, {"setup;media", 2.5}}));
 }
 
-TEST(mqtt, SplitDump) {
+TEST(mqtt, SplitDump)
+{
     std::string header, row;
     ASSERT_TRUE(mqtt_split_dump("a;b;\n1;2;\n", header, row));
     EXPECT_EQ("a;b;", header);

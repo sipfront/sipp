@@ -1365,7 +1365,7 @@ void CStat::dumpDataRtt ()
         return;
     }
     if (M_captureRtt) {
-        for (unsigned int L_i = 0; L_i < M_counterDumpRespTime ; L_i ++) {
+        for (unsigned int L_i = 0; L_i < M_counterDumpRespTime; L_i++) {
             M_capturedRtt.emplace_back(M_dumpRespTime[L_i].rtd_no, M_dumpRespTime[L_i].rtt);
             M_dumpRespTime[L_i].date = 0.0;
             M_dumpRespTime[L_i].rtt = 0.0;

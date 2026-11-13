@@ -137,7 +137,7 @@ std::string mqtt_csv_to_json(const std::string &header, const std::string &row, 
 /* Response times, each the name of its timer and its milliseconds, as the
  * "ResponseTimes" array: one object per timer, in the order the timers
  * first appear, with Count, Min, Mean, P50, P90, P95, P99 and Max. */
-std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, double> > &times);
+std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, double>> &times);
 
 /* The limit on the errors that are published, and the count of those it
  * held back. Not synchronized: mqtt_publish_error() keeps one behind its
