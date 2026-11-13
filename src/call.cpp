@@ -6626,8 +6626,14 @@ TEST(create_sending_message, string_leaves_the_message_buffer)
 
 /* -auth_optional for the length of a test. */
 struct auth_optional_guard {
-    auth_optional_guard() { auth_optional = true; }
-    ~auth_optional_guard() { auth_optional = false; }
+    auth_optional_guard()
+    {
+        auth_optional = true;
+    }
+    ~auth_optional_guard()
+    {
+        auth_optional = false;
+    }
 };
 
 TEST(create_sending_message, optional_authentication_leaves_its_line_out)
@@ -6635,23 +6641,23 @@ TEST(create_sending_message, optional_authentication_leaves_its_line_out)
     auth_optional_guard optional;
     mockcall test_call(false);
     /* before Content-Length, with a header and a body after it */
-    SendingMessage before(main_scenario,
-                          "REGISTER sip:a@b SIP/2.0\n[authentication]\nContent-Length: [len]\nX-Foo: bar\n\nabc\n", true);
+    SendingMessage before(
+        main_scenario, "REGISTER sip:a@b SIP/2.0\n[authentication]\nContent-Length: [len]\nX-Foo: bar\n\nabc\n", true);
     int len = -1;
     const char *out = test_call.createSendingMessage(&before, -1, &len);
     EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     5\r\nX-Foo: bar\r\n\r\nabc\r\n", out);
     EXPECT_EQ((size_t)len, strlen(out));
 
     /* after Content-Length, the last header before the body */
-    SendingMessage after(main_scenario,
-                         "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\nabc\n", true);
+    SendingMessage after(main_scenario, "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\nabc\n",
+                         true);
     out = test_call.createSendingMessage(&after, -1, &len);
     EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     5\r\n\r\nabc\r\n", out);
     EXPECT_EQ((size_t)len, strlen(out));
 
     /* the last header of a message without a body */
-    SendingMessage no_body(main_scenario,
-                           "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\n", true);
+    SendingMessage no_body(main_scenario, "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\n",
+                           true);
     out = test_call.createSendingMessage(&no_body, -1, &len);
     EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     0\r\n\r\n", out);
     EXPECT_EQ((size_t)len, strlen(out));
@@ -6663,7 +6669,8 @@ TEST(create_sending_message, optional_authentication_answers_a_challenge)
     mockcall test_call(false);
     SendingMessage msg(main_scenario,
                        "REGISTER sip:a@b SIP/2.0\n[authentication username=alice password=secret]\n"
-                       "Content-Length: [len]\nX-Foo: bar\n\nabc\n", false /* the method is needed */);
+                       "Content-Length: [len]\nX-Foo: bar\n\nabc\n",
+                       false /* the method is needed */);
     test_call.setChallenge("Digest realm=\"test\", nonce=\"abcdef\"", 401);
     int len = -1;
     const char *out = test_call.createSendingMessage(&msg, -1, &len);
