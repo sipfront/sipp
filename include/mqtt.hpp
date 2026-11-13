@@ -95,8 +95,9 @@ bool mqtt_active();
  * main loop on every pass; does nothing without -mqtt_ctrl. */
 void mqtt_poll();
 
-/* Prepare what mqtt_report_stats() publishes: call once, after mqtt_setup()
- * and before the traffic starts. */
+/* Prepare what mqtt_report_stats() publishes: call once, when the scenarios
+ * have their statistics and before anything of them runs (an <init> can
+ * measure a response time). Needs no connection. */
 void mqtt_stats_init();
 
 /* Publish the statistics, the message counts and the error codes of the main
@@ -134,10 +135,10 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
 std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
                              const std::string &delimiter);
 
-/* The lines of a response time file ("date;time;timer" each, times in ms) as
- * the "ResponseTimes" array: one object per timer, in the order the timers
+/* Response times, each the name of its timer and its milliseconds, as the
+ * "ResponseTimes" array: one object per timer, in the order the timers
  * first appear, with Count, Min, Mean, P50, P90, P95, P99 and Max. */
-std::string mqtt_rtt_summary_json(const std::string &lines, const std::string &delimiter);
+std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, double> > &times);
 
 /* An error as it is published. */
 std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text,

@@ -2623,6 +2623,11 @@ int main(int argc, char *argv[])
                                   report_freq_dumpRtt);
             }
         }
+#ifdef USE_MQTT
+        /* Before a scenario's <init> runs, which can measure the first
+         * response time. The broker is connected later, after -bg forked. */
+        mqtt_stats_init();
+#endif
     }
 
     if (rate_increase_freq == 0) {
@@ -2731,7 +2736,6 @@ int main(int argc, char *argv[])
      * before the first statistics. */
     if (mqtt_stats || mqtt_ctrl) {
         mqtt_setup();
-        mqtt_stats_init();
     }
 #endif
 
