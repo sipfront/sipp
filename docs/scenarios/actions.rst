@@ -152,7 +152,8 @@ of SIP what a call is doing. It needs libcurl at build time
 The call does not wait for the request: it is queued, and one of four
 worker threads makes it, so a slow server does not hold up SIPp. A request
 that fails -- no connection, no answer within ten seconds, a status of 400
-or more -- is reported as a warning (see ``-trace_err``). With more than
+or more -- is reported as a warning (see ``-trace_err``), which names the
+URL without its user, password and query. With more than
 10000 requests waiting, new ones are dropped and counted in a warning. On
 exit SIPp gives the requests still waiting three seconds.
 

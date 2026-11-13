@@ -47,6 +47,10 @@ enum curl_method_t {
 curl_method_t sipp_curl_method(const char *name);
 const char *sipp_curl_method_name(curl_method_t method);
 
+/* A URL as a warning may say it: without the user and password before the
+ * host, and without the query and fragment, where tokens are. */
+std::string sipp_curl_loggable_url(const std::string &url);
+
 #ifdef USE_CURL
 
 /* Let the workers start: call once, after a -bg fork and before the traffic.

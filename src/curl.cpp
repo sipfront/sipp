@@ -48,6 +48,19 @@ const char *sipp_curl_method_name(curl_method_t method)
     }
 }
 
+std::string sipp_curl_loggable_url(const std::string &url)
+{
+    std::string out = url.substr(0, url.find_first_of("?#"));
+    size_t authority = out.find("://");
+    authority = authority == std::string::npos ? 0 : authority + 3;
+    size_t path = out.find('/', authority);
+    size_t at = out.rfind('@', path == std::string::npos ? std::string::npos : path);
+    if (at != std::string::npos && at >= authority && (path == std::string::npos || at < path)) {
+        out.erase(authority, at + 1 - authority);
+    }
+    return out;
+}
+
 #ifdef USE_CURL
 
 #include <atomic>
@@ -119,13 +132,11 @@ static size_t discard(void *, size_t size, size_t nmemb, void *)
 
 static void perform(CURL *easy, const curl_request &request)
 {
-    char error[CURL_ERROR_SIZE] = "";
     struct curl_slist *headers = nullptr;
 
     curl_easy_reset(easy);
     curl_easy_setopt(easy, CURLOPT_URL, request.url.c_str());
     curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, discard);
-    curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, error);
     curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(easy, CURLOPT_MAXREDIRS, 5L);
@@ -168,13 +179,13 @@ static void perform(CURL *easy, const curl_request &request)
 
     CURLcode rc = curl_easy_perform(easy);
     if (rc != CURLE_OK) {
-        report_failure(std::string(sipp_curl_method_name(request.method)) + " " + request.url + ": " +
-                       (error[0] ? error : curl_easy_strerror(rc)));
+        report_failure(std::string(sipp_curl_method_name(request.method)) + " " + sipp_curl_loggable_url(request.url) + ": " +
+                       curl_easy_strerror(rc));
     } else {
         long status = 0;
         curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &status);
         if (status >= 400) {
-            report_failure(std::string(sipp_curl_method_name(request.method)) + " " + request.url +
+            report_failure(std::string(sipp_curl_method_name(request.method)) + " " + sipp_curl_loggable_url(request.url) +
                            ": HTTP status " + std::to_string(status));
         }
     }
@@ -203,7 +214,7 @@ static void worker()
         if (easy) {
             perform(easy, request);
         } else {
-            report_failure(std::string(sipp_curl_method_name(request.method)) + " " + request.url +
+            report_failure(std::string(sipp_curl_method_name(request.method)) + " " + sipp_curl_loggable_url(request.url) +
                            ": could not set up libcurl");
         }
         {
@@ -319,5 +330,15 @@ TEST(curl, Method) {
     EXPECT_EQ(CURL_METHOD_DELETE, sipp_curl_method("delete"));
     EXPECT_EQ(CURL_METHOD_INVALID, sipp_curl_method("PATCH"));
     EXPECT_STREQ("DELETE", sipp_curl_method_name(CURL_METHOD_DELETE));
+}
+
+TEST(curl, LoggableUrl) {
+    EXPECT_EQ("http://host/calls/1", sipp_curl_loggable_url("http://host/calls/1"));
+    EXPECT_EQ("https://host:8443/calls", sipp_curl_loggable_url("https://user:secret@host:8443/calls?token=abc#x"));
+    EXPECT_EQ("http://host", sipp_curl_loggable_url("http://user@host?key=1"));
+    /* an @ in the path is not a user */
+    EXPECT_EQ("http://host/a@b", sipp_curl_loggable_url("http://host/a@b"));
+    EXPECT_EQ("host/path", sipp_curl_loggable_url("user:pw@host/path?x=1"));
+    EXPECT_EQ("", sipp_curl_loggable_url(""));
 }
 #endif /* GTEST */
