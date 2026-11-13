@@ -86,6 +86,10 @@ static std::deque<curl_request> queue;
 static bool stopping = false;
 static size_t in_flight = 0;
 static std::vector<std::thread> workers;
+/* Set by sipp_curl_start(): from then on the workers may be started. Before
+ * it a -bg fork may still come, whose child has none of the parent's
+ * threads; a request of an <init> waits in the queue until then. */
+static bool may_start = false;
 
 /* From the workers to the main loop. */
 static std::mutex failure_mutex;
@@ -213,18 +217,35 @@ static void worker()
     }
 }
 
+/* With queue_mutex held. */
+static void start_workers()
+{
+    if (!may_start || !workers.empty()) {
+        return;
+    }
+    /* Before any thread uses libcurl. */
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    for (size_t i = 0; i < CURL_WORKERS; i++) {
+        workers.emplace_back(worker);
+    }
+}
+
+void sipp_curl_start()
+{
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    may_start = true;
+    if (!queue.empty()) {
+        start_workers();
+    }
+}
+
 void sipp_curl(curl_method_t method, const std::string &url, bool has_data,
                const std::string &data, const std::string &content_type)
 {
     {
         std::lock_guard<std::mutex> lock(queue_mutex);
-        if (workers.empty()) {
-            /* The first request: before any thread uses libcurl. */
-            curl_global_init(CURL_GLOBAL_DEFAULT);
-            for (size_t i = 0; i < CURL_WORKERS; i++) {
-                workers.emplace_back(worker);
-            }
-        }
+        /* With the first request, once they may. */
+        start_workers();
         if (queue.size() >= CURL_QUEUE_MAX) {
             dropped++;
             return;

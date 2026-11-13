@@ -150,7 +150,14 @@ function(apply_common_sipp_dependencies TARGET_NAME)
 
   if(USE_CURL)
     target_include_directories(${TARGET_NAME} PRIVATE ${CURL_INCLUDE_DIRS})
-    target_link_libraries(${TARGET_NAME} ${CURL_LIBRARIES})
+    if(BUILD_STATIC AND CURL_STATIC_LIBRARIES)
+      target_link_libraries(${TARGET_NAME} ${CURL_STATIC_LIBRARIES})
+      if(CURL_STATIC_LIBRARY_DIRS)
+        target_link_directories(${TARGET_NAME} PRIVATE ${CURL_STATIC_LIBRARY_DIRS})
+      endif()
+    else()
+      target_link_libraries(${TARGET_NAME} ${CURL_LIBRARIES})
+    endif()
   endif()
 
   if(LUA_FOUND)
@@ -356,6 +363,16 @@ endif(USE_MQTT)
 
 if(USE_CURL)
   add_definitions("-DUSE_CURL")
+  # A static libcurl needs what it was built with (zlib, nghttp2, a TLS
+  # library, ...). FindCURL names the archive alone; pkg-config lists the
+  # rest, in the order the linker wants them.
+  if(BUILD_STATIC AND PKG_CONFIG_FOUND)
+    pkg_check_modules(CURL_PC QUIET libcurl)
+    if(CURL_PC_FOUND)
+      set(CURL_STATIC_LIBRARIES ${CURL_PC_STATIC_LIBRARIES})
+      set(CURL_STATIC_LIBRARY_DIRS ${CURL_PC_STATIC_LIBRARY_DIRS})
+    endif()
+  endif()
 endif(USE_CURL)
 
 # Find all libraries before creating targets

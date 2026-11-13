@@ -2740,6 +2740,11 @@ int main(int argc, char *argv[])
 
     std::this_thread::sleep_for(std::chrono::milliseconds(sleeptime));
 
+#ifdef USE_CURL
+    /* After a -bg fork, whose child would not have the workers' threads. */
+    sipp_curl_start();
+#endif
+
 #ifdef USE_MQTT
     /* After a -bg fork, whose child would not have the connection's thread;
      * before the first statistics. */

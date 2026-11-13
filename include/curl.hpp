@@ -49,6 +49,10 @@ const char *sipp_curl_method_name(curl_method_t method);
 
 #ifdef USE_CURL
 
+/* Let the workers start: call once, after a -bg fork and before the traffic.
+ * A request queued before it (by an <init>) is made from then on. */
+void sipp_curl_start();
+
 /* Queue a request. has_data says whether there is a body, which may be
  * empty; content_type may be empty for libcurl's default. Main thread. */
 void sipp_curl(curl_method_t method, const std::string &url, bool has_data,
