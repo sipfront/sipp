@@ -107,7 +107,12 @@ keyboard, such as ``q``, or ``c`` followed by a command, such as
 
 The messages are run by the main loop on its next pass, in the order they
 came. Should they come faster than they can be run, the oldest of more than
-256 waiting are dropped and a warning says how many.
+256 waiting are dropped and a warning says how many. A message longer than
+the control socket could carry (65535 bytes) is dropped the same way.
+
+SIPp does not start before the broker has granted the subscription: a
+refusal, or no answer within ``-mqtt_connect_timeout``, is an error. A
+refusal after a reconnect during the run is a warning.
 
 Errors
 ------

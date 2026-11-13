@@ -157,6 +157,27 @@ std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
     return json;
 }
 
+bool mqtt_split_dump(const std::string &text, std::string &header, std::string &row)
+{
+    /* Both lines end with a newline, and the row has none of its own: the
+     * header ends at the last newline before the final one. A counter may
+     * be named with a newline in it, so the first one is not the place. */
+    if (text.empty() || text[text.length() - 1] != '\n') {
+        return false;
+    }
+    size_t row_end = text.length() - 1;
+    if (!row_end) {
+        return false;
+    }
+    size_t header_end = text.rfind('\n', row_end - 1);
+    if (header_end == std::string::npos) {
+        return false;
+    }
+    header = text.substr(0, header_end);
+    row = text.substr(header_end + 1, row_end - header_end - 1);
+    return true;
+}
+
 /* "name":"value" */
 static std::string member(const char *name, const std::string &value)
 {
@@ -282,15 +303,10 @@ public:
         stat->M_headerAlreadyDisplayed = file_has_header;
         stat->M_outputStream = file;
 
-        std::string text = capture.take();
-        size_t header_end = text.find('\n');
-        if (header_end == std::string::npos) {
+        std::string header, row;
+        if (!mqtt_split_dump(capture.take(), header, row)) {
             return "";
         }
-        size_t row_end = text.find('\n', header_end + 1);
-        std::string header = text.substr(0, header_end);
-        std::string row = text.substr(header_end + 1,
-                                      row_end == std::string::npos ? std::string::npos : row_end - header_end - 1);
 
         /* The three times as every message has them, not as the file does
          * (date, time and epoch with tabs between, or RFC 3339). */
@@ -524,6 +540,21 @@ TEST(mqtt, RttSummary) {
               mqtt_rtt_summary_json(lines, ";"));
     EXPECT_EQ("[]", mqtt_rtt_summary_json("", ";"));
     EXPECT_EQ("[]", mqtt_rtt_summary_json("Date_ms;response_time_ms;rtd_no\n", ";"));
+}
+
+TEST(mqtt, SplitDump) {
+    std::string header, row;
+    ASSERT_TRUE(mqtt_split_dump("a;b;\n1;2;\n", header, row));
+    EXPECT_EQ("a;b;", header);
+    EXPECT_EQ("1;2;", row);
+    /* a counter named with a newline in it stays in the header */
+    ASSERT_TRUE(mqtt_split_dump("a;two\nlines;\n1;2;\n", header, row));
+    EXPECT_EQ("a;two\nlines;", header);
+    EXPECT_EQ("1;2;", row);
+    EXPECT_FALSE(mqtt_split_dump("", header, row));
+    EXPECT_FALSE(mqtt_split_dump("\n", header, row));
+    EXPECT_FALSE(mqtt_split_dump("only one line\n", header, row));
+    EXPECT_FALSE(mqtt_split_dump("a;\n1;", header, row));
 }
 #endif /* GTEST */
 

@@ -147,6 +147,10 @@ std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::st
 std::string mqtt_message_json(const struct timeval *now, const std::string &call_id, const char *direction,
                               const char *transport, bool control, const std::string &message, size_t size);
 
+/* What CStat::dumpData() wrote, a header line and a data line that each end
+ * with a newline, taken apart. False if the text is not these two lines. */
+bool mqtt_split_dump(const std::string &text, std::string &header, std::string &row);
+
 #endif /* USE_MQTT */
 
 #endif /* __SIPP_MQTT_HPP__ */
