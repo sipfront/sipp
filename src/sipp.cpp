@@ -633,7 +633,7 @@ struct sipp_option options_table[] = {
    {"", "SIPp overall behavior options:", SIPP_HELP_TEXT_HEADER, nullptr, 0},
    {"v", "Display version and copyright information.", SIPP_OPTION_VERSION, nullptr, 0},
    {"bg", "Launch SIPp in background mode.", SIPP_OPTION_SETFLAG, &backgroundMode, 1},
-   {"noscreen", "Print no statistics screens at all, neither while running nor at the end: for a SIPp whose output is collected by another program. (Without a terminal the screens are otherwise printed as text.)", SIPP_OPTION_SETFLAG, &noscreen, 1},
+   {"noscreen", "Print no statistics screens at all, neither while running nor at the end: for a SIPp whose output is collected by another program. (Without a terminal the screens are otherwise printed as text.) The keys are then read from stdin as they come, without a screen: on a terminal a key takes effect with Enter.", SIPP_OPTION_SETFLAG, &noscreen, 1},
    {"nostdin", "Disable stdin.\n", SIPP_OPTION_SETFLAG, &nostdin, 1},
    {"plugin", "Load a plugin.", SIPP_OPTION_PLUGIN, nullptr, 1},
    {"lua_file", "Load a Lua file, whose functions <exec lua=\"function arg ...\"/> calls.", SIPP_OPTION_ARGI, &argiLuaFile, 1},
@@ -655,7 +655,7 @@ struct sipp_option options_table[] = {
     {"", "Call behavior options:", SIPP_HELP_TEXT_HEADER, nullptr, 0},
     {"aa", "Enable automatic 200 OK answer for INFO, NOTIFY, OPTIONS and UPDATE.", SIPP_OPTION_SETFLAG, &auto_answer, 1},
     {"base_cseq", "Start value of [cseq] for each call.", SIPP_OPTION_CSEQ, nullptr, 1},
-    {"reuse_user_callid", "With -users, give each user the same Call-ID for all of its calls, and let [cseq] go on in a call where the user's call before it ended: for refreshing a registration as a phone does. Use it with -deadcall_wait 0, or a call that just ended still holds the Call-ID.", SIPP_OPTION_SETFLAG, &reuse_users_callid, 1},
+    {"reuse_user_callid", "With -users, give each user the same Call-ID for all of its calls, and let [cseq] go on in a call where the user's call before it ended: for refreshing a registration as a phone does. Use it with -deadcall_wait 0, or a call that just ended still holds the Call-ID. Not for scenarios with dialog=\"N\" messages.", SIPP_OPTION_SETFLAG, &reuse_users_callid, 1},
     {"cid_str", "Call ID string (default %u-%p@%s).  %u=call_number, %s=ip_address, %p=process_number, %r=random_integer, %%=% (in any order).", SIPP_OPTION_STRING, &call_id_string, 1},
     {"cid_type", "Call ID generation mode. Values: default (aliases: format, legacy), uuid, uuid-compact (aliases: uuidcompact, uuid32), random (alias: random-hex), timestamp (alias: time). Modes other than default ignore -cid_str.", SIPP_OPTION_STRING, &call_id_mode_string, 1},
     {"d", "Controls the length of calls. More precisely, this controls the duration of 'pause' instructions in the scenario, if they do not have a 'milliseconds' section. Default value is 0 and default unit is milliseconds.", SIPP_OPTION_TIME_MS, &duration, 1},
@@ -2634,6 +2634,12 @@ int main(int argc, char *argv[])
     call::dynamicId      = startDynamicId;
     call::stepDynamicId  = stepDynamicId;
 
+
+    if (reuse_users_callid && main_scenario->dialogs) {
+        /* One Call-ID and one [cseq] are kept for a user; the further
+         * dialogs of a call have Call-IDs and counters of their own. */
+        ERROR("-reuse_user_callid can not be used with a scenario that has dialog=\"N\" messages");
+    }
 
     /* Now Initialize the scenarios. */
     main_scenario->runInit();
