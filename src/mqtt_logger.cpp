@@ -258,6 +258,11 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
         max_len = sizeof(buf) - sizeof(cut_marker);
     }
     if (max_len > 0 && strlen(buf) > max_len) {
+        /* not in the middle of a UTF-8 character, whose first bytes alone
+         * would make the message invalid JSON */
+        while (max_len > 0 && ((unsigned char)buf[max_len] & 0xc0) == 0x80) {
+            max_len--;
+        }
         memcpy(buf + max_len, cut_marker, sizeof(cut_marker));
     }
     std::string strbuf = do_replace(std::string(buf), "\r?\n", "\\r\\n");
