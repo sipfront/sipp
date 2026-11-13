@@ -78,6 +78,9 @@ enum { MQTT_SUBSCRIPTION_PENDING, MQTT_SUBSCRIPTION_GRANTED, MQTT_SUBSCRIPTION_R
 static std::atomic<int> mqtt_subscription(MQTT_SUBSCRIPTION_PENDING);
 /* A refusal after a reconnect, for the main thread to say. */
 static std::atomic<bool> mqtt_subscription_lost(false);
+/* A subscribe after a reconnect that could not be handed over (a
+ * MOSQ_ERR_* value), for the main thread to say; 0 for none. */
+static std::atomic<int> mqtt_subscribe_failed(0);
 
 /* Main thread only. */
 static bool mqtt_was_connected = false;
@@ -95,7 +98,14 @@ static void on_connect(struct mosquitto *client, void *, int rc)
         /* On every connect: the session is a clean one, the broker does
          * not remember the subscription over a reconnect. */
         mqtt_subscription = MQTT_SUBSCRIPTION_PENDING;
-        mqtt_subscribe_result = mosquitto_subscribe(client, nullptr, mqtt_ctrl_topic, mqtt_sub_qos);
+        int result = mosquitto_subscribe(client, nullptr, mqtt_ctrl_topic, mqtt_sub_qos);
+        mqtt_subscribe_result = result;
+        if (result != MOSQ_ERR_SUCCESS) {
+            /* No answer of the broker will follow. At startup
+             * mqtt_setup() reads the result; later mqtt_poll() does. */
+            mqtt_subscribe_failed = result;
+            mqtt_control_pending = true;
+        }
     }
     mqtt_connected = (rc == 0);
 }
@@ -273,6 +283,7 @@ void mqtt_setup()
                   mqtt_host, mqtt_port, mqtt_ctrl_topic, mqtt_connect_timeout);
         }
         mqtt_subscription_lost = false;
+        mqtt_subscribe_failed = 0;
     }
 }
 
@@ -318,6 +329,12 @@ bool mqtt_publish(const char *topic, const std::string &payload, bool quiet)
 
 void mqtt_poll()
 {
+    if (!mqtt_client) {
+        return;
+    }
+    /* Here too, not only with a publish: with -mqtt_ctrl alone nothing is
+     * published, and a broker that is gone takes the remote control away. */
+    mqtt_report_connection();
     if (!mqtt_control_pending) {
         return;
     }
@@ -335,6 +352,11 @@ void mqtt_poll()
     if (oversized) {
         WARNING("MQTT: %lu control messages dropped, they were longer than %lu bytes",
                 oversized, (unsigned long)MQTT_CONTROL_MESSAGE_MAX);
+    }
+    int subscribe_failed = mqtt_subscribe_failed.exchange(0);
+    if (subscribe_failed) {
+        WARNING("MQTT: could not subscribe to the control topic '%s' after connecting again: %s, "
+                "control messages do not arrive any more", mqtt_ctrl_topic, mosquitto_strerror(subscribe_failed));
     }
     if (mqtt_subscription_lost.exchange(false)) {
         WARNING("MQTT: the broker '%s:%d' refused the subscription to the control topic '%s' after connecting again, "
