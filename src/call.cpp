@@ -2893,21 +2893,22 @@ bool call::abortCall(bool writeLog)
      * index no step has, not that of the step before it, which would be
      * the ACK's after a 2xx. */
     int byeIndex = call_scenario->messages.size();
-    /* -reuse_user_callid: the BYE below is a request [cseq] did not count.
-     * It is "[last_cseq_number+1]", and the user's next call, which goes
-     * on in the same Call-ID, has to begin after it. */
-    auto count_bye = [this]() {
-        if (!reuse_users_callid) {
-            return;
+    /* -reuse_user_callid: the BYE below is a request [cseq] did not count,
+     * and the user's next call, which goes on in the same Call-ID, has to
+     * begin after it. Its CSeq is read from the BYE as it is sent: a
+     * scenario can bring a <DefaultMessage id="bye"> of its own. */
+    auto send_bye = [this, byeIndex]() {
+        char *bye = createSendingMessage(get_default_message("bye"), byeIndex);
+        if (reuse_users_callid) {
+            const header_value bye_cseq = get_header_content(bye, "CSeq:");
+            if (!bye_cseq.empty()) {
+                const long sent = header_number(bye_cseq.view());
+                if (sent > 0 && (unsigned long)sent <= UINT_MAX && (unsigned int)sent > cseq) {
+                    cseq = (unsigned int)sent;
+                }
+            }
         }
-        unsigned int bye_cseq = cseq + 1;
-        const header_value last_header = get_last_header("CSeq:");
-        if (!bye_after_peer_request && !last_header.empty()) {
-            bye_cseq = header_number(last_header.view().substr(strlen("CSeq:"))) + 1;
-        }
-        if (bye_cseq > cseq) {
-            cseq = bye_cseq;
-        }
+        sendBuffer(bye);
     };
 
     if (createsDialog() && (msg_index > 0)) {
@@ -2926,9 +2927,8 @@ bool call::abortCall(bool writeLog)
                     sendBuffer(createSendingMessage(get_default_message("ack")));
 
                     /* Send the BYE */
-                    sendBuffer(createSendingMessage(get_default_message("bye"), byeIndex));
+                    send_bye();
                     sent_bye = true;
-                    count_bye();
                 } else {
                     /* Send a CANCEL */
                     sendBuffer(createSendingMessage(get_default_message("cancel")));
@@ -2949,9 +2949,8 @@ bool call::abortCall(bool writeLog)
             /* The peer's own request has its From and To the other way
              * round from ours, and a CSeq of the peer's. */
             bye_after_peer_request = !get_reply_code(last_recv_msg.c_str());
-            sendBuffer(createSendingMessage(get_default_message("bye"), byeIndex));
+            send_bye();
             sent_bye = true;
-            count_bye();
         }
     }
 
