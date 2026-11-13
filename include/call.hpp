@@ -235,6 +235,7 @@ public:
     static   int   stepDynamicId;   // step of increment for dynamicId
     static   int   dynamicId;       // a counter for general use, incrementing  by  stepDynamicId starting at startDynamicId  wrapping at maxDynamicId  GLOBALY
 protected:
+    void setChallenge(std::string_view challenge, int reply_code);
     unsigned int tdm_map_number = 0;
 
     int            msg_index;
