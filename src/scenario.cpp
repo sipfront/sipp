@@ -1478,7 +1478,7 @@ void scenario::parseAction(CActions *actions)
         } /* end !strcmp(actionElem, "ereg") */ else if(!strcmp(actionElem, "log")) {
             tmpAction->setMessage(xp_get_string("message", "log"));
             tmpAction->setActionType(CAction::E_AT_LOG_TO_FILE);
-        } else if(!strcmp(actionElem, "curl")) {
+        } else if (!strcmp(actionElem, "curl")) {
 #ifdef USE_CURL
             const char *value;
             tmpAction->setMessage(xp_get_string("url", "curl"), 0);
@@ -1497,20 +1497,20 @@ void scenario::parseAction(CActions *actions)
 #else
             ERROR("The scenario has a curl action, but this SIPp is built without libcurl (-DUSE_CURL=1)");
 #endif
-        } else if(!strcmp(actionElem, "warning")) {
+        } else if (!strcmp(actionElem, "warning")) {
             tmpAction->setMessage(xp_get_string("message", "warning"));
             tmpAction->setActionType(CAction::E_AT_LOG_WARNING);
-        } else if(!strcmp(actionElem, "error")) {
+        } else if (!strcmp(actionElem, "error")) {
             tmpAction->setMessage(xp_get_string("message", "error"));
             tmpAction->setActionType(CAction::E_AT_LOG_ERROR);
-        } else if(!strcmp(actionElem, "assign")) {
+        } else if (!strcmp(actionElem, "assign")) {
             tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_VALUE);
             handle_arithmetic(tmpAction, "assign");
-        } else if(!strcmp(actionElem, "assignstr")) {
+        } else if (!strcmp(actionElem, "assignstr")) {
             tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_STRING);
             tmpAction->setVarId(xp_get_var("assign_to", "assignstr"));
             tmpAction->setMessage(xp_get_string("value", "assignstr"));
-        } else if(!strcmp(actionElem, "gettimeofday")) {
+        } else if (!strcmp(actionElem, "gettimeofday")) {
             tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_GETTIMEOFDAY);
 
             if (!(cptr = xp_get_value("assign_to"))) {
@@ -1526,25 +1526,25 @@ void scenario::parseAction(CActions *actions)
             tmpAction->setVarId(varId);
             varId = get_var(varNames[1].c_str(), "gettimeofday useconds assign_to");
             tmpAction->setSubVarId(varId);
-        } else if(!strcmp(actionElem, "index")) {
+        } else if (!strcmp(actionElem, "index")) {
             tmpAction->setVarId(xp_get_var("assign_to", "index"));
             tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_INDEX);
-        } else if(!strcmp(actionElem, "jump")) {
+        } else if (!strcmp(actionElem, "jump")) {
             tmpAction->setActionType(CAction::E_AT_JUMP);
             handle_rhs(tmpAction, "jump");
-        } else if(!strcmp(actionElem, "pauserestore")) {
+        } else if (!strcmp(actionElem, "pauserestore")) {
             tmpAction->setActionType(CAction::E_AT_PAUSE_RESTORE);
             handle_rhs(tmpAction, "pauserestore");
-        } else if(!strcmp(actionElem, "add")) {
+        } else if (!strcmp(actionElem, "add")) {
             tmpAction->setActionType(CAction::E_AT_VAR_ADD);
             handle_arithmetic(tmpAction, "add");
-        } else if(!strcmp(actionElem, "subtract")) {
+        } else if (!strcmp(actionElem, "subtract")) {
             tmpAction->setActionType(CAction::E_AT_VAR_SUBTRACT);
             handle_arithmetic(tmpAction, "subtract");
-        } else if(!strcmp(actionElem, "multiply")) {
+        } else if (!strcmp(actionElem, "multiply")) {
             tmpAction->setActionType(CAction::E_AT_VAR_MULTIPLY);
             handle_arithmetic(tmpAction, "multiply");
-        } else if(!strcmp(actionElem, "divide")) {
+        } else if (!strcmp(actionElem, "divide")) {
             tmpAction->setActionType(CAction::E_AT_VAR_DIVIDE);
             handle_arithmetic(tmpAction, "divide");
             if (tmpAction->getVarInId() == 0) {
@@ -1552,15 +1552,15 @@ void scenario::parseAction(CActions *actions)
                     ERROR("divide actions can not have a value of zero!");
                 }
             }
-        } else if(!strcmp(actionElem, "sample")) {
+        } else if (!strcmp(actionElem, "sample")) {
             tmpAction->setVarId(xp_get_var("assign_to", "sample"));
             tmpAction->setActionType(CAction::E_AT_ASSIGN_FROM_SAMPLE);
             tmpAction->setDistribution(parse_distribution());
-        } else if(!strcmp(actionElem, "todouble")) {
+        } else if (!strcmp(actionElem, "todouble")) {
             tmpAction->setActionType(CAction::E_AT_VAR_TO_DOUBLE);
             tmpAction->setVarId(xp_get_var("assign_to", "todouble"));
             tmpAction->setVarInId(xp_get_var("variable", "todouble"));
-        } else if(!strcmp(actionElem, "test")) {
+        } else if (!strcmp(actionElem, "test")) {
             if (xp_get_value("check_it")) {
                 tmpAction->setCheckIt(xp_get_bool("check_it", "test"));
                 if (xp_get_value("check_it_inverse")) {
@@ -1601,35 +1601,35 @@ void scenario::parseAction(CActions *actions)
             } else {
                 ERROR("Invalid 'compare' parameter: %s", compare.c_str());
             }
-        } else if(!strcmp(actionElem, "verifyauth")) {
+        } else if (!strcmp(actionElem, "verifyauth")) {
             tmpAction->setVarId(xp_get_var("assign_to", "verifyauth"));
             std::string username = xp_get_string("username", "verifyauth");
             std::string password = xp_get_string("password", "verifyauth");
             tmpAction->setMessage(username, 0);
             tmpAction->setMessage(password, 1);
             tmpAction->setActionType(CAction::E_AT_VERIFY_AUTH);
-        } else if(!strcmp(actionElem, "lookup")) {
+        } else if (!strcmp(actionElem, "lookup")) {
             tmpAction->setVarId(xp_get_var("assign_to", "lookup"));
             xp_set_message(tmpAction, 0, "file", "lookup");
             xp_set_message(tmpAction, 1, "key", "lookup");
             tmpAction->setActionType(CAction::E_AT_LOOKUP);
-        } else if(!strcmp(actionElem, "insert")) {
+        } else if (!strcmp(actionElem, "insert")) {
             xp_set_message(tmpAction, 0, "file", "insert");
             xp_set_message(tmpAction, 1, "value", "insert");
             tmpAction->setActionType(CAction::E_AT_INSERT);
-        } else if(!strcmp(actionElem, "replace")) {
+        } else if (!strcmp(actionElem, "replace")) {
             xp_set_message(tmpAction, 0, "file", "replace");
             xp_set_message(tmpAction, 1, "line", "replace");
             xp_set_message(tmpAction, 2, "value", "replace");
             tmpAction->setActionType(CAction::E_AT_REPLACE);
-        } else if(!strcmp(actionElem, "setdest")) {
+        } else if (!strcmp(actionElem, "setdest")) {
             xp_set_message(tmpAction, 0, "host", "setdest");
             xp_set_message(tmpAction, 1, "port", "setdest");
             xp_set_message(tmpAction, 2, "protocol", "setdest");
             tmpAction->setActionType(CAction::E_AT_SET_DEST);
-        } else if(!strcmp(actionElem, "closecon")) {
+        } else if (!strcmp(actionElem, "closecon")) {
             tmpAction->setActionType(CAction::E_AT_CLOSE_CON);
-        } else if(!strcmp(actionElem, "strcmp")) {
+        } else if (!strcmp(actionElem, "strcmp")) {
             if (xp_get_value("check_it")) {
                 tmpAction->setCheckIt(xp_get_bool("check_it", "strcmp"));
                 if (xp_get_value("check_it_inverse")) {
@@ -1654,16 +1654,16 @@ void scenario::parseAction(CActions *actions)
                 tmpAction->setVarIn2Id(xp_get_var("variable2", "strcmp"));
             }
             tmpAction->setActionType(CAction::E_AT_VAR_STRCMP);
-        } else if(!strcmp(actionElem, "trim")) {
+        } else if (!strcmp(actionElem, "trim")) {
             tmpAction->setVarId(xp_get_var("assign_to", "trim"));
             tmpAction->setActionType(CAction::E_AT_VAR_TRIM);
-        } else if(!strcmp(actionElem, "urldecode")) {
+        } else if (!strcmp(actionElem, "urldecode")) {
             tmpAction->setVarId(xp_get_var("variable", "urldecode"));
             tmpAction->setActionType(CAction::E_AT_VAR_URLDECODE);
-        } else if(!strcmp(actionElem, "urlencode")) {
+        } else if (!strcmp(actionElem, "urlencode")) {
             tmpAction->setVarId(xp_get_var("variable", "urlencode"));
             tmpAction->setActionType(CAction::E_AT_VAR_URLENCODE);
-        } else if(!strcmp(actionElem, "exec")) {
+        } else if (!strcmp(actionElem, "exec")) {
             if ((cptr = xp_get_value("command"))) {
                 tmpAction->setActionType(CAction::E_AT_EXECUTE_CMD);
                 tmpAction->setMessage(cptr);

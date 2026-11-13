@@ -151,8 +151,14 @@ public:
     const char *getRegularExpression();
     SendingMessage *getMessage(int n = 0);  /* log specific function  */
     T_IntCmdType   getIntCmd();   /* exec specific function */
-    int            getCurlMethod() { return M_curlMethod; }   /* curl specific function */
-    void           setCurlMethod(int P_method) { M_curlMethod = P_method; }
+    int getCurlMethod()
+    {
+        return M_curlMethod;
+    } /* curl specific function */
+    void setCurlMethod(int P_method)
+    {
+        M_curlMethod = P_method;
+    }
 #ifdef PCAPPLAY
     pcap_pkts     *getPcapPkts(); /* send_packets specific function */
 #endif
@@ -226,7 +232,7 @@ private:
     /* exec specific member */
     T_IntCmdType   M_IntCmd;
     /* curl specific member: a curl_method_t */
-    int            M_curlMethod = 0;
+    int M_curlMethod = 0;
     /* sample specific member. */
     CSample *      M_distribution;
     /* assign value specific member. */

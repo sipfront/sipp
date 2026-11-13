@@ -35,13 +35,7 @@
 
 #include <string>
 
-enum curl_method_t {
-    CURL_METHOD_GET = 0,
-    CURL_METHOD_POST,
-    CURL_METHOD_PUT,
-    CURL_METHOD_DELETE,
-    CURL_METHOD_INVALID
-};
+enum curl_method_t { CURL_METHOD_GET = 0, CURL_METHOD_POST, CURL_METHOD_PUT, CURL_METHOD_DELETE, CURL_METHOD_INVALID };
 
 /* "GET", "post", ... as a method; CURL_METHOD_INVALID for anything else. */
 curl_method_t sipp_curl_method(const char *name);
@@ -59,8 +53,8 @@ void sipp_curl_start();
 
 /* Queue a request. has_data says whether there is a body, which may be
  * empty; content_type may be empty for libcurl's default. Main thread. */
-void sipp_curl(curl_method_t method, const std::string &url, bool has_data,
-               const std::string &data, const std::string &content_type);
+void sipp_curl(curl_method_t method, const std::string &url, bool has_data, const std::string &data,
+               const std::string &content_type);
 
 /* Report the requests that failed since the last call. Main loop. */
 void sipp_curl_poll();

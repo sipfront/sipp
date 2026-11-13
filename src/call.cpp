@@ -5440,8 +5440,8 @@ call::T_ActionResult call::executeAction(const char* msg, message* curmsg)
             if (url_cut || body_cut) {
                 /* Cut where a rendered string ends: the start of a body
                  * is not the body, and a server may take it for one. */
-                WARNING("curl: the %s is longer than %d bytes, the request is not made",
-                        body_cut ? "body" : "url", SIPP_MAX_MSG_SIZE);
+                WARNING("curl: the %s is longer than %d bytes, the request is not made", body_cut ? "body" : "url",
+                        SIPP_MAX_MSG_SIZE);
             } else {
                 sipp_curl((curl_method_t)currentAction->getCurlMethod(), url, data != nullptr, body,
                           content_type ? createSendingString(content_type) : "");

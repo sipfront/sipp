@@ -40,11 +40,16 @@ curl_method_t sipp_curl_method(const char *name)
 const char *sipp_curl_method_name(curl_method_t method)
 {
     switch (method) {
-    case CURL_METHOD_GET:    return "GET";
-    case CURL_METHOD_POST:   return "POST";
-    case CURL_METHOD_PUT:    return "PUT";
-    case CURL_METHOD_DELETE: return "DELETE";
-    default:                 return "?";
+    case CURL_METHOD_GET:
+        return "GET";
+    case CURL_METHOD_POST:
+        return "POST";
+    case CURL_METHOD_PUT:
+        return "PUT";
+    case CURL_METHOD_DELETE:
+        return "DELETE";
+    default:
+        return "?";
     }
 }
 
@@ -179,14 +184,14 @@ static void perform(CURL *easy, const curl_request &request)
 
     CURLcode rc = curl_easy_perform(easy);
     if (rc != CURLE_OK) {
-        report_failure(std::string(sipp_curl_method_name(request.method)) + " " + sipp_curl_loggable_url(request.url) + ": " +
-                       curl_easy_strerror(rc));
+        report_failure(std::string(sipp_curl_method_name(request.method)) + " " + sipp_curl_loggable_url(request.url) +
+                       ": " + curl_easy_strerror(rc));
     } else {
         long status = 0;
         curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &status);
         if (status >= 400) {
-            report_failure(std::string(sipp_curl_method_name(request.method)) + " " + sipp_curl_loggable_url(request.url) +
-                           ": HTTP status " + std::to_string(status));
+            report_failure(std::string(sipp_curl_method_name(request.method)) + " " +
+                           sipp_curl_loggable_url(request.url) + ": HTTP status " + std::to_string(status));
         }
     }
     if (headers) {
@@ -214,8 +219,8 @@ static void worker()
         if (easy) {
             perform(easy, request);
         } else {
-            report_failure(std::string(sipp_curl_method_name(request.method)) + " " + sipp_curl_loggable_url(request.url) +
-                           ": could not set up libcurl");
+            report_failure(std::string(sipp_curl_method_name(request.method)) + " " +
+                           sipp_curl_loggable_url(request.url) + ": could not set up libcurl");
         }
         {
             std::lock_guard<std::mutex> lock(queue_mutex);
@@ -250,8 +255,8 @@ void sipp_curl_start()
     }
 }
 
-void sipp_curl(curl_method_t method, const std::string &url, bool has_data,
-               const std::string &data, const std::string &content_type)
+void sipp_curl(curl_method_t method, const std::string &url, bool has_data, const std::string &data,
+               const std::string &content_type)
 {
     {
         std::lock_guard<std::mutex> lock(queue_mutex);
@@ -269,8 +274,7 @@ void sipp_curl(curl_method_t method, const std::string &url, bool has_data,
 void sipp_curl_poll()
 {
     if (dropped != dropped_reported) {
-        WARNING("curl: %lu requests dropped so far, more than %zu were waiting to be made",
-                dropped, CURL_QUEUE_MAX);
+        WARNING("curl: %lu requests dropped so far, more than %zu were waiting to be made", dropped, CURL_QUEUE_MAX);
         dropped_reported = dropped;
     }
     if (!failures_pending) {
@@ -335,7 +339,8 @@ void sipp_curl_shutdown()
 #ifdef GTEST
 #include "gtest/gtest.h"
 
-TEST(curl, Method) {
+TEST(curl, Method)
+{
     EXPECT_EQ(CURL_METHOD_GET, sipp_curl_method(nullptr));
     EXPECT_EQ(CURL_METHOD_GET, sipp_curl_method("get"));
     EXPECT_EQ(CURL_METHOD_POST, sipp_curl_method("POST"));
@@ -345,7 +350,8 @@ TEST(curl, Method) {
     EXPECT_STREQ("DELETE", sipp_curl_method_name(CURL_METHOD_DELETE));
 }
 
-TEST(curl, LoggableUrl) {
+TEST(curl, LoggableUrl)
+{
     EXPECT_EQ("http://host/calls/1", sipp_curl_loggable_url("http://host/calls/1"));
     EXPECT_EQ("https://host:8443/calls", sipp_curl_loggable_url("https://user:secret@host:8443/calls?token=abc#x"));
     EXPECT_EQ("http://host", sipp_curl_loggable_url("http://user@host?key=1"));
