@@ -69,8 +69,8 @@ static std::string member(const char *name, const std::string &value, bool last 
     return std::string("\"") + name + "\":\"" + mqtt_json_escape(value) + (last ? "\"" : "\",");
 }
 
-std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text,
-                            int error, unsigned long total, unsigned long suppressed, int max_len)
+std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text, int error,
+                            unsigned long total, unsigned long suppressed, int max_len)
 {
     std::string content = text;
     if (max_len > 0 && content.length() > (size_t)max_len) {
@@ -84,12 +84,9 @@ std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::st
         content.resize(cut);
         content += "...";
     }
-    return "{" + member("CurrentTime", mqtt_format_time(now)) +
-           member("Content", content) +
-           member("Fatal", fatal ? "1" : "0") +
-           member("Total", std::to_string(total)) +
-           member("Suppressed", std::to_string(suppressed)) +
-           member("ErrnoString", error ? strerror(error) : "") +
+    return "{" + member("CurrentTime", mqtt_format_time(now)) + member("Content", content) +
+           member("Fatal", fatal ? "1" : "0") + member("Total", std::to_string(total)) +
+           member("Suppressed", std::to_string(suppressed)) + member("ErrnoString", error ? strerror(error) : "") +
            member("Errno", std::to_string(error), true) + "}";
 }
 
@@ -113,26 +110,22 @@ void mqtt_publish_error(const struct timeval *now, bool fatal, const std::string
      * comes back here. Behind the mutex, so that the count of what was held
      * back goes out once, and is kept when the message is not taken: it,
      * and this error, are reported with the next one that is. */
-    error_limit.published(mqtt_publish(mqtt_error_topic,
-                                       mqtt_error_json(now, fatal, text, error, error_limit.total(),
-                                                       error_limit.suppressed(), mqtt_error_max_len),
-                                       true));
+    error_limit.published(mqtt_publish(
+        mqtt_error_topic,
+        mqtt_error_json(now, fatal, text, error, error_limit.total(), error_limit.suppressed(), mqtt_error_max_len),
+        true));
 }
 
 std::string mqtt_message_json(const struct timeval *now, const std::string &call_id, const char *direction,
                               const char *transport, bool control, const std::string &message, size_t size)
 {
-    return "{" + member("CurrentTime", mqtt_format_time(now)) +
-           member("CallId", call_id) +
-           member("Direction", direction) +
-           member("Transport", transport) +
-           member("Type", control ? "control" : "") +
-           member("Message", message) +
-           member("Size", std::to_string(size), true) + "}";
+    return "{" + member("CurrentTime", mqtt_format_time(now)) + member("CallId", call_id) +
+           member("Direction", direction) + member("Transport", transport) + member("Type", control ? "control" : "") +
+           member("Message", message) + member("Size", std::to_string(size), true) + "}";
 }
 
-void mqtt_trace_message(const struct timeval *now, const char *direction, const char *transport,
-                        bool control, const char *buffer, size_t len)
+void mqtt_trace_message(const struct timeval *now, const char *direction, const char *transport, bool control,
+                        const char *buffer, size_t len)
 {
     if (!(useMessagef == 1 || useShortMessagef == 1) || !mqtt_stats || !mqtt_active()) {
         return;
@@ -144,26 +137,32 @@ void mqtt_trace_message(const struct timeval *now, const char *direction, const 
         /* -trace_shortmsg alone: the first line says which message it was. */
         message = std::string(get_first_line(message.c_str()));
     }
-    mqtt_publish(mqtt_message_topic,
-                 mqtt_message_json(now, call_id, direction, transport, control, message, len));
+    mqtt_publish(mqtt_message_topic, mqtt_message_json(now, call_id, direction, transport, control, message, len));
 }
 
 #ifdef GTEST
 #include "gtest/gtest.h"
 
-TEST(mqtt, ErrorJson) {
-    struct timeval tv = { 0, 0 };
-    std::string json = mqtt_error_json(&tv, false, "Aborting call on unexpected message for Call-Id 'a@b': received 'SIP/2.0 503 x\r\n'",
-                                       0, 7, 3, 4096);
-    EXPECT_NE(std::string::npos, json.find("\"Content\":\"Aborting call on unexpected message for Call-Id 'a@b': received 'SIP/2.0 503 x\\r\\n'\""));
-    EXPECT_NE(std::string::npos, json.find("\"Fatal\":\"0\",\"Total\":\"7\",\"Suppressed\":\"3\",\"ErrnoString\":\"\",\"Errno\":\"0\"}"));
+TEST(mqtt, ErrorJson)
+{
+    struct timeval tv = {0, 0};
+    std::string json = mqtt_error_json(
+        &tv, false, "Aborting call on unexpected message for Call-Id 'a@b': received 'SIP/2.0 503 x\r\n'", 0, 7, 3,
+        4096);
+    EXPECT_NE(
+        std::string::npos,
+        json.find(
+            "\"Content\":\"Aborting call on unexpected message for Call-Id 'a@b': received 'SIP/2.0 503 x\\r\\n'\""));
+    EXPECT_NE(std::string::npos,
+              json.find("\"Fatal\":\"0\",\"Total\":\"7\",\"Suppressed\":\"3\",\"ErrnoString\":\"\",\"Errno\":\"0\"}"));
 
     json = mqtt_error_json(&tv, true, "Unable to bind main socket", EADDRINUSE, 1, 0, 4096);
     EXPECT_NE(std::string::npos, json.find("\"Fatal\":\"1\""));
     EXPECT_NE(std::string::npos, json.find(std::string("\"ErrnoString\":\"") + strerror(EADDRINUSE) + "\""));
 }
 
-TEST(mqtt, ErrorLimit) {
+TEST(mqtt, ErrorLimit)
+{
     MqttErrorLimit limit;
     /* two a second: the third and fourth of second 100 are held back */
     EXPECT_TRUE(limit.admit(100, false, 2));
@@ -190,7 +189,8 @@ TEST(mqtt, ErrorLimit) {
     EXPECT_EQ(9UL, limit.total());
 }
 
-TEST(mqtt, ErrorLimitKeepsTheCountOfAMessageNotTaken) {
+TEST(mqtt, ErrorLimitKeepsTheCountOfAMessageNotTaken)
+{
     MqttErrorLimit limit;
     EXPECT_TRUE(limit.admit(100, false, 1));
     limit.published(true);
@@ -207,7 +207,8 @@ TEST(mqtt, ErrorLimitKeepsTheCountOfAMessageNotTaken) {
     EXPECT_EQ(0UL, limit.suppressed());
 }
 
-TEST(mqtt, ErrorLimitOff) {
+TEST(mqtt, ErrorLimitOff)
+{
     MqttErrorLimit limit;
     for (int i = 0; i < 1000; i++) {
         EXPECT_TRUE(limit.admit(100, false, 0));
@@ -217,18 +218,27 @@ TEST(mqtt, ErrorLimitOff) {
     EXPECT_EQ(0UL, limit.suppressed());
 }
 
-TEST(mqtt, ErrorJsonCutsLongText) {
-    struct timeval tv = { 0, 0 };
+TEST(mqtt, ErrorJsonCutsLongText)
+{
+    struct timeval tv = {0, 0};
     EXPECT_NE(std::string::npos, mqtt_error_json(&tv, false, "0123456789", 0, 1, 0, 4).find("\"Content\":\"0123...\""));
-    EXPECT_NE(std::string::npos, mqtt_error_json(&tv, false, "0123456789", 0, 1, 0, 0).find("\"Content\":\"0123456789\""));
+    EXPECT_NE(std::string::npos,
+              mqtt_error_json(&tv, false, "0123456789", 0, 1, 0, 0).find("\"Content\":\"0123456789\""));
     /* not inside the two bytes of the u-umlaut */
-    EXPECT_NE(std::string::npos, mqtt_error_json(&tv, false, "ab\xc3\xbc" "cd", 0, 1, 0, 3).find("\"Content\":\"ab...\""));
+    EXPECT_NE(std::string::npos, mqtt_error_json(&tv, false,
+                                                 "ab\xc3\xbc"
+                                                 "cd",
+                                                 0, 1, 0, 3)
+                                     .find("\"Content\":\"ab...\""));
 }
 
-TEST(mqtt, MessageJson) {
-    struct timeval tv = { 0, 0 };
+TEST(mqtt, MessageJson)
+{
+    struct timeval tv = {0, 0};
     std::string json = mqtt_message_json(&tv, "1-2@127.0.0.1", "recv", "UDP", false, "SIP/2.0 200 OK\r\n\r\n", 18);
-    EXPECT_NE(std::string::npos, json.find("\"CallId\":\"1-2@127.0.0.1\",\"Direction\":\"recv\",\"Transport\":\"UDP\",\"Type\":\"\",\"Message\":\"SIP/2.0 200 OK\\r\\n\\r\\n\",\"Size\":\"18\"}"));
+    EXPECT_NE(std::string::npos,
+              json.find("\"CallId\":\"1-2@127.0.0.1\",\"Direction\":\"recv\",\"Transport\":\"UDP\",\"Type\":\"\","
+                        "\"Message\":\"SIP/2.0 200 OK\\r\\n\\r\\n\",\"Size\":\"18\"}"));
 }
 #endif /* GTEST */
 

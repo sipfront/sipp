@@ -482,8 +482,8 @@ private:
     /* -mqtt_stats: the response times are kept as they were measured, the
      * timer and its milliseconds, for mqtt_stat.cpp to take; their file is
      * not written. */
-    bool                     M_captureRtt = false        ;
-    std::vector<std::pair<int, double> > M_capturedRtt   ;
+    bool M_captureRtt = false;
+    std::vector<std::pair<int, double>> M_capturedRtt;
 
     /**
      * initRepartition

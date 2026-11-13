@@ -6223,9 +6223,18 @@ public:
     using call::createSendingMessage;
     using call::createSendingString;
     /* A call of a -users user, as call::add_call() makes it. */
-    mockcall(const char *p_id, int user) : listener(p_id, true), call(main_scenario, nullptr, nullptr, p_id, user, false, false, false) {}
-    unsigned int get_cseq() const { return cseq; }
-    void set_cseq(unsigned int value) { cseq = value; }
+    mockcall(const char *p_id, int user)
+        : listener(p_id, true), call(main_scenario, nullptr, nullptr, p_id, user, false, false, false)
+    {
+    }
+    unsigned int get_cseq() const
+    {
+        return cseq;
+    }
+    void set_cseq(unsigned int value)
+    {
+        cseq = value;
+    }
     using call::extract_rtp_remote_addr;
     void set_last_recv_msg(const char *msg)
     {
@@ -6638,8 +6647,14 @@ TEST(create_sending_message, string_leaves_the_message_buffer)
 
 /* -auth_optional for the length of a test. */
 struct auth_optional_guard {
-    auth_optional_guard() { auth_optional = true; }
-    ~auth_optional_guard() { auth_optional = false; }
+    auth_optional_guard()
+    {
+        auth_optional = true;
+    }
+    ~auth_optional_guard()
+    {
+        auth_optional = false;
+    }
 };
 
 TEST(create_sending_message, optional_authentication_leaves_its_line_out)
@@ -6647,23 +6662,23 @@ TEST(create_sending_message, optional_authentication_leaves_its_line_out)
     auth_optional_guard optional;
     mockcall test_call(false);
     /* before Content-Length, with a header and a body after it */
-    SendingMessage before(main_scenario,
-                          "REGISTER sip:a@b SIP/2.0\n[authentication]\nContent-Length: [len]\nX-Foo: bar\n\nabc\n", true);
+    SendingMessage before(
+        main_scenario, "REGISTER sip:a@b SIP/2.0\n[authentication]\nContent-Length: [len]\nX-Foo: bar\n\nabc\n", true);
     int len = -1;
     const char *out = test_call.createSendingMessage(&before, -1, &len);
     EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     5\r\nX-Foo: bar\r\n\r\nabc\r\n", out);
     EXPECT_EQ((size_t)len, strlen(out));
 
     /* after Content-Length, the last header before the body */
-    SendingMessage after(main_scenario,
-                         "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\nabc\n", true);
+    SendingMessage after(main_scenario, "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\nabc\n",
+                         true);
     out = test_call.createSendingMessage(&after, -1, &len);
     EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     5\r\n\r\nabc\r\n", out);
     EXPECT_EQ((size_t)len, strlen(out));
 
     /* the last header of a message without a body */
-    SendingMessage no_body(main_scenario,
-                           "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\n", true);
+    SendingMessage no_body(main_scenario, "REGISTER sip:a@b SIP/2.0\nContent-Length: [len]\n[authentication]\n\n",
+                           true);
     out = test_call.createSendingMessage(&no_body, -1, &len);
     EXPECT_STREQ("REGISTER sip:a@b SIP/2.0\r\nContent-Length:     0\r\n\r\n", out);
     EXPECT_EQ((size_t)len, strlen(out));
@@ -6675,7 +6690,8 @@ TEST(create_sending_message, optional_authentication_answers_a_challenge)
     mockcall test_call(false);
     SendingMessage msg(main_scenario,
                        "REGISTER sip:a@b SIP/2.0\n[authentication username=alice password=secret]\n"
-                       "Content-Length: [len]\nX-Foo: bar\n\nabc\n", false /* the method is needed */);
+                       "Content-Length: [len]\nX-Foo: bar\n\nabc\n",
+                       false /* the method is needed */);
     test_call.setChallenge("Digest realm=\"test\", nonce=\"abcdef\"", 401);
     int len = -1;
     const char *out = test_call.createSendingMessage(&msg, -1, &len);
@@ -6696,8 +6712,14 @@ TEST(create_sending_message, authentication_without_a_challenge_is_an_error)
 /* -reuse_user_callid for the length of a test. What it keeps for a user
  * stays for the run, so each test has users of its own. */
 struct reuse_user_callid_guard {
-    reuse_user_callid_guard() { reuse_users_callid = true; }
-    ~reuse_user_callid_guard() { reuse_users_callid = false; }
+    reuse_user_callid_guard()
+    {
+        reuse_users_callid = true;
+    }
+    ~reuse_user_callid_guard()
+    {
+        reuse_users_callid = false;
+    }
 };
 
 static std::string id_of_new_call(int user)
