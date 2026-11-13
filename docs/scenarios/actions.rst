@@ -137,7 +137,7 @@ The following example is used to:
   characters must be escaped as &amp; and &lt; even inside attribute values.
 
 Make an HTTP request
---------------------
+++++++++++++++++++++
 
 The "curl" action makes an HTTP or HTTPS request, to tell a system outside
 of SIP what a call is doing. It needs libcurl at build time
