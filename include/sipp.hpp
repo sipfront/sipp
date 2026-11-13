@@ -353,12 +353,14 @@ MAYBE_EXTERN bool               extendedTwinSippMode    DEFVAL(false);
 
 MAYBE_EXTERN bool               nostdin                 DEFVAL(false);
 MAYBE_EXTERN bool               backgroundMode          DEFVAL(false);
+MAYBE_EXTERN bool               noscreen                DEFVAL(false);
 MAYBE_EXTERN bool               signalDump              DEFVAL(false);
 
 MAYBE_EXTERN int                currentScreenToDisplay  DEFVAL
 (DISPLAY_SCENARIO_SCREEN);
 MAYBE_EXTERN int                currentRepartitionToDisplay  DEFVAL(1);
 MAYBE_EXTERN unsigned int       base_cseq               DEFVAL(0);
+MAYBE_EXTERN bool               reuse_users_callid      DEFVAL(false);
 MAYBE_EXTERN char             * auth_uri                DEFVAL(0);
 MAYBE_EXTERN const char       * call_id_string          DEFVAL("%u-%p@%s");
 MAYBE_EXTERN int                call_id_mode            DEFVAL(CID_MODE_FORMAT);
