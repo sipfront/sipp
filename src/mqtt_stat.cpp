@@ -33,6 +33,8 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
+#include <locale>
 #include <map>
 #include <sstream>
 
@@ -196,11 +198,14 @@ static double percentile(const std::vector<double> &sorted, double p)
     return sorted[rank ? rank - 1 : 0];
 }
 
+/* With a decimal point, whatever the locale: the screen sets the user's
+ * (setlocale in screen_init), in which printf may write a comma. */
 static std::string milliseconds(double value)
 {
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%.3f", value);
-    return buf;
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out << std::fixed << std::setprecision(3) << value;
+    return out.str();
 }
 
 std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, double> > &measured)
@@ -547,6 +552,15 @@ TEST(mqtt, RttSummary) {
               "\"P90\":\"12.345\",\"P95\":\"12.345\",\"P99\":\"12.345\",\"Max\":\"12.345\"}]",
               mqtt_rtt_summary_json(times));
     EXPECT_EQ("[]", mqtt_rtt_summary_json({}));
+    /* the same in a locale that writes a decimal comma, where there is one */
+    const std::string locale_before = setlocale(LC_NUMERIC, nullptr);
+    for (const char *comma : {"de_DE.UTF-8", "de_DE.utf8", "de_DE", "fr_FR.UTF-8"}) {
+        if (setlocale(LC_NUMERIC, comma)) {
+            EXPECT_NE(std::string::npos, mqtt_rtt_summary_json(times).find("\"Mean\":\"50.500\"")) << comma;
+            break;
+        }
+    }
+    setlocale(LC_NUMERIC, locale_before.c_str());
     /* a timer is its whole name, whatever is in it */
     EXPECT_EQ("[{\"Name\":\"setup;auth\",\"Count\":\"1\",\"Min\":\"1.500\",\"Mean\":\"1.500\",\"P50\":\"1.500\","
               "\"P90\":\"1.500\",\"P95\":\"1.500\",\"P99\":\"1.500\",\"Max\":\"1.500\"},"
