@@ -123,8 +123,7 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
 /* A header line and a data line of the statistics file as one JSON object,
  * {"<column>":"<value>",...}. Columns without a name are left out; a data
  * line shorter than the header gives empty strings. */
-std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
-                             const std::string &delimiter);
+std::string mqtt_csv_to_json(const std::string &header, const std::string &row, const std::string &delimiter);
 
 /* The limit on the errors that are published, and the count of those it
  * held back. Not synchronized: mqtt_publish_error() keeps one behind its
