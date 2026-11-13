@@ -81,8 +81,13 @@ void mqtt_publish_error(const struct timeval *now, bool fatal, const std::string
         std::lock_guard<std::mutex> lock(error_mutex);
         error_total++;
         if (!fatal && mqtt_error_rate > 0) {
-            if (now->tv_sec != error_second) {
-                error_second = now->tv_sec;
+            /* The second of the limit is read here, behind the mutex: the
+             * caller's time was taken before it, and a caller that waited
+             * would bring an old second back and its allowance with it. */
+            struct timeval limit_clock;
+            GET_TIME(&limit_clock);
+            if (limit_clock.tv_sec != error_second) {
+                error_second = limit_clock.tv_sec;
                 error_second_count = 0;
             }
             if (error_second_count >= mqtt_error_rate) {
