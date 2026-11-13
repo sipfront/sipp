@@ -377,7 +377,10 @@ void stop_oversized_traces()
     fclose(f);
     close_trace(&message_lfi);
     close_trace(&log_lfi);
-    dumpInRtt = 0;
+    if (!mqtt_rtt_capture) {
+        /* else they go to the broker and fill no file */
+        dumpInRtt = 0;
+    }
     dumpInFile = 0;
     print_all_responses = 0;
     close_trace(&error_lfi);
