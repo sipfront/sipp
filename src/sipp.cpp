@@ -802,6 +802,9 @@ struct sipp_option options_table[] = {
     {"mqtt_stats_topic", "Set the MQTT topic the statistics are published to. Default is '/sipp/stats'.", SIPP_OPTION_STRING, &mqtt_stats_topic, 1},
     {"mqtt_countstats_topic", "Set the MQTT topic the message counts are published to. Default is '/sipp/countstats'.", SIPP_OPTION_STRING, &mqtt_countstats_topic, 1},
     {"mqtt_codestats_topic", "Set the MQTT topic the response codes of unexpected messages are published to. Default is '/sipp/codestats'.", SIPP_OPTION_STRING, &mqtt_codestats_topic, 1},
+    {"mqtt_ctrl", "Take control messages from the MQTT broker as from the control socket (-cp): SIPp subscribes to -mqtt_ctrl_topic, and each message is a key, such as 'q', or 'c' and a command, such as 'cset rate 10'.", SIPP_OPTION_BOOL, &mqtt_ctrl, 1},
+    {"mqtt_ctrl_topic", "Set the MQTT topic control messages are taken from. Default is '/sipp/ctrl'.", SIPP_OPTION_STRING, &mqtt_ctrl_topic, 1},
+    {"mqtt_sub_qos", "Set the QoS of the subscription to the control topic: 0, 1 or 2. Default is 1.", SIPP_OPTION_INT, &mqtt_sub_qos, 1},
 #else
     {"mqtt_stats", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_host", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
@@ -818,6 +821,9 @@ struct sipp_option options_table[] = {
     {"mqtt_stats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_countstats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_codestats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_ctrl", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_ctrl_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_sub_qos", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
 #endif
 
     {"", "Tracing, logging and statistics options:", SIPP_HELP_TEXT_HEADER, nullptr, 0},
@@ -976,6 +982,11 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
         }
         scheduling_loops++;
         update_clock_tick();
+
+#ifdef USE_MQTT
+        /* What came in over -mqtt_ctrl since the last pass. */
+        mqtt_poll();
+#endif
 
         if (timeout_fired) {
             timeout_fired = false;
@@ -2657,7 +2668,7 @@ int main(int argc, char *argv[])
 #ifdef USE_MQTT
     /* After a -bg fork, whose child would not have the connection's thread;
      * before the first statistics. */
-    if (mqtt_stats) {
+    if (mqtt_stats || mqtt_ctrl) {
         mqtt_setup();
     }
 #endif

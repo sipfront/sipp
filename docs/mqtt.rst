@@ -79,3 +79,21 @@ are set to.
 
        {"CurrentTime":"2026-11-13 18:45:53.954701",
         "ElapsedTime":"00:00:04:534000", "ErrorCodes":[503,503,486]}
+
+Remote control
+--------------
+
+``-mqtt_ctrl 1`` makes SIPp subscribe to ``-mqtt_ctrl_topic`` (default
+``/sipp/ctrl``, QoS ``-mqtt_sub_qos``) and take each message as the
+:doc:`control socket <controlling>` takes a datagram: a key as on the
+keyboard, such as ``q``, or ``c`` followed by a command, such as
+``cset rate 10`` or ``cset limit 500``.
+
+The messages are run by the main loop on its next pass, in the order they
+came. Should they come faster than they can be run, the oldest of more than
+256 waiting are dropped and a warning says how many. A message longer than
+the control socket could carry (65535 bytes) is dropped the same way.
+
+SIPp does not start before the broker has granted the subscription: a
+refusal, or no answer within ``-mqtt_connect_timeout``, is an error. A
+refusal after a reconnect during the run is a warning.
