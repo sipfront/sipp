@@ -145,7 +145,14 @@ function(apply_common_sipp_dependencies TARGET_NAME)
 
   if(USE_MQTT)
     target_include_directories(${TARGET_NAME} PRIVATE ${MOSQUITTO_INCLUDE_DIR})
-    target_link_libraries(${TARGET_NAME} ${MOSQUITTO_LIBRARY})
+    if(BUILD_STATIC AND MOSQUITTO_STATIC_LIBRARIES)
+      target_link_libraries(${TARGET_NAME} ${MOSQUITTO_STATIC_LIBRARIES})
+      if(MOSQUITTO_STATIC_LIBRARY_DIRS)
+        target_link_directories(${TARGET_NAME} PRIVATE ${MOSQUITTO_STATIC_LIBRARY_DIRS})
+      endif()
+    else()
+      target_link_libraries(${TARGET_NAME} ${MOSQUITTO_LIBRARY})
+    endif()
   endif()
 
   if(USE_CURL)
@@ -359,6 +366,18 @@ endif(USE_SCTP)
 
 if(USE_MQTT)
   add_definitions("-DUSE_MQTT")
+  # A static libmosquitto needs what it was built with (a TLS library of its
+  # own, whichever SIPp uses, c-ares, ...), and find_library names the
+  # archive alone. The list is taken from pkg-config, in the order the linker
+  # wants it. libmosquitto.pc as mosquitto ships it names no dependencies:
+  # then say them, -DMOSQUITTO_STATIC_LIBRARIES="mosquitto;ssl;crypto;cares".
+  if(BUILD_STATIC AND PKG_CONFIG_FOUND AND NOT MOSQUITTO_STATIC_LIBRARIES)
+    pkg_check_modules(MOSQUITTO_PC QUIET libmosquitto)
+    if(MOSQUITTO_PC_FOUND)
+      set(MOSQUITTO_STATIC_LIBRARIES ${MOSQUITTO_PC_STATIC_LIBRARIES})
+      set(MOSQUITTO_STATIC_LIBRARY_DIRS ${MOSQUITTO_PC_STATIC_LIBRARY_DIRS})
+    endif()
+  endif()
 endif(USE_MQTT)
 
 if(USE_CURL)
