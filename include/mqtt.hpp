@@ -105,6 +105,10 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
 std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
                              const std::string &delimiter);
 
+/* What CStat::dumpData() wrote, a header line and a data line that each end
+ * with a newline, taken apart. False if the text is not these two lines. */
+bool mqtt_split_dump(const std::string &text, std::string &header, std::string &row);
+
 #endif /* USE_MQTT */
 
 #endif /* __SIPP_MQTT_HPP__ */
