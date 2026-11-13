@@ -1155,6 +1155,11 @@ call::call(scenario *call_scenario, SIPpSocket *socket, struct sockaddr_storage 
     init(call_scenario, socket, dest, p_id, userId, ipv6, isAutomatic, isInitialization);
 }
 
+/* -reuse_user_callid: the Call-ID of each user (-users), and the [cseq] its
+ * last call ended with, which its next call goes on from. */
+static std::map<int, std::string> user_call_ids;
+static std::map<int, unsigned int> user_cseqs;
+
 call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest,
                      remote_address *remote)
 {
@@ -1164,7 +1169,19 @@ call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest,
         next_number ++;
     }
 
-    build_call_id(call_id, next_number);
+    /* -reuse_user_callid: a user's calls share the Call-ID of its first. */
+    std::string *user_call_id = nullptr;
+    if (reuse_users_callid && userId > 0) {
+        user_call_id = &user_call_ids[userId];
+    }
+    if (user_call_id && !user_call_id->empty()) {
+        snprintf(call_id, sizeof(call_id), "%s", user_call_id->c_str());
+    } else {
+        build_call_id(call_id, next_number);
+        if (user_call_id) {
+            *user_call_id = call_id;
+        }
+    }
 
     call *new_call = new call(main_scenario, nullptr, dest, call_id, userId, ipv6, false /* Not Auto. */, false);
     new_call->remote = remote;
@@ -1234,6 +1251,12 @@ void call::init(scenario *call_scenario, SIPpSocket *socket, struct sockaddr_sto
     ack_is_pending=false ;
     bye_after_peer_request = false;
     cseq = base_cseq;
+    if (reuse_users_callid && userId > 0 && !isAutomatic && !isInitCall) {
+        std::map<int, unsigned int>::iterator last = user_cseqs.find(userId);
+        if (last != user_cseqs.end()) {
+            cseq = last->second;
+        }
+    }
     nb_last_delay = 0;
     use_ipv6 = ipv6;
 
@@ -1474,6 +1497,10 @@ int call::_callDebug(const char *fmt, ...)
 call::~call()
 {
     computeStat(CStat::E_ADD_CALL_DURATION, clock_tick - start_time);
+
+    if (reuse_users_callid && userId > 0 && !initCall) {
+        user_cseqs[userId] = cseq;
+    }
 
     if (call_remote_socket && (call_remote_socket != main_remote_socket)) {
         call_remote_socket->close();
