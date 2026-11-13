@@ -6171,9 +6171,18 @@ public:
     using call::createSendingMessage;
     using call::createSendingString;
     /* A call of a -users user, as call::add_call() makes it. */
-    mockcall(const char *p_id, int user) : listener(p_id, true), call(main_scenario, nullptr, nullptr, p_id, user, false, false, false) {}
-    unsigned int get_cseq() const { return cseq; }
-    void set_cseq(unsigned int value) { cseq = value; }
+    mockcall(const char *p_id, int user)
+        : listener(p_id, true), call(main_scenario, nullptr, nullptr, p_id, user, false, false, false)
+    {
+    }
+    unsigned int get_cseq() const
+    {
+        return cseq;
+    }
+    void set_cseq(unsigned int value)
+    {
+        cseq = value;
+    }
     using call::extract_rtp_remote_addr;
     void set_last_recv_msg(const char *msg)
     {
@@ -6586,8 +6595,14 @@ TEST(create_sending_message, string_leaves_the_message_buffer)
 /* -reuse_user_callid for the length of a test. What it keeps for a user
  * stays for the run, so each test has users of its own. */
 struct reuse_user_callid_guard {
-    reuse_user_callid_guard() { reuse_users_callid = true; }
-    ~reuse_user_callid_guard() { reuse_users_callid = false; }
+    reuse_user_callid_guard()
+    {
+        reuse_users_callid = true;
+    }
+    ~reuse_user_callid_guard()
+    {
+        reuse_users_callid = false;
+    }
 };
 
 static std::string id_of_new_call(int user)
