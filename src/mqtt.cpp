@@ -205,10 +205,11 @@ void mqtt_shutdown()
         return;
     }
 
-    /* What is queued gets its chance: until everything is delivered, the
-     * connection is gone, or -mqtt_shutdelay is over. */
+    /* What is queued gets its chance: until everything is delivered or
+     * -mqtt_shutdelay is over. A connection that is gone just now does not
+     * end the wait: the thread connects again and sends what is left. */
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(mqtt_shutdelay > 0 ? mqtt_shutdelay : 0);
-    while (mqtt_connected && mqtt_undelivered > 0 && std::chrono::steady_clock::now() < deadline) {
+    while (mqtt_undelivered > 0 && std::chrono::steady_clock::now() < deadline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
