@@ -751,6 +751,7 @@ struct sipp_option options_table[] = {
     {"send_timeout", "Global send timeout. Default unit is milliseconds. If a message is not sent (due to congestion), the call times out and is aborted.", SIPP_OPTION_TIME_MS_LONG, &defl_send_timeout, 1},
     {"timeout", "Global timeout. Default unit is seconds.  If this option is set, SIPp quits after nb units (-timeout 20s quits after 20 seconds).", SIPP_OPTION_TIME_SEC, &global_timeout, 1},
     {"timeout_error", "SIPp fails if the global timeout is reached (-timeout option required).", SIPP_OPTION_SETFLAG, &timeout_error, 1},
+    {"timeout_grace", "When the global timeout is reached, let the calls end by themselves for that long before SIPp quits: no new call is started, a call in a pause goes on at once with what follows the pause, and what is still up when the time is over is aborted as without this option. Default unit is seconds. Default is 0: quit at once (-timeout option required).", SIPP_OPTION_TIME_SEC, &timeout_grace, 1},
     {"max_retrans", "Maximum number of UDP retransmissions before call ends on timeout.  Default is 5 for INVITE transactions and 9 for others.", SIPP_OPTION_INT, &max_udp_retrans, 1},
     {"max_invite_retrans", "Maximum number of UDP retransmissions for invite transactions before call ends on timeout.", SIPP_OPTION_INT, &max_invite_retrans, 1},
     {"max_non_invite_retrans", "Maximum number of UDP retransmissions for non-invite transactions before call ends on timeout.", SIPP_OPTION_INT, &max_non_invite_retrans, 1},
@@ -933,6 +934,9 @@ static void sipp_sigusr2(int /* not used */)
 /* ERROR() and the exit it makes are not safe in a signal handler, which
  * may have interrupted a malloc: the traffic loop acts on the timeout. */
 static std::atomic<bool> timeout_fired{false};
+/* Set while the calls get -timeout_grace to end; the alarm that ends it
+ * fires timeout_fired again. */
+static bool timeout_in_grace = false;
 
 void timeout_alarm(int /*param*/)
 {
@@ -1003,8 +1007,23 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
             if (timeout_error) {
                 ERROR("%s timed out after '%.3lf' seconds", scenario_file, ((double)clock_tick / 1000LL));
             }
-            quitting = 11;
             timeout_exit = true;
+            if (timeout_grace > 0 && !timeout_in_grace && quitting < 11) {
+                /* No new calls, and those in a pause go on to their end; the
+                 * alarm comes back when the grace is over. The loop leaves as
+                 * soon as no call is up. */
+                timeout_in_grace = true;
+                if (!quitting) {
+                    quitting = 1;
+                }
+                end_all_pauses();
+                struct itimerval grace = {};
+                grace.it_value.tv_sec = timeout_grace / 1000;
+                grace.it_value.tv_usec = (timeout_grace % 1000) * 1000;
+                setitimer(ITIMER_REAL, &grace, nullptr);
+            } else {
+                quitting = 11;
+            }
         }
 
         if (signalDump) {

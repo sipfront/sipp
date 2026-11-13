@@ -73,6 +73,17 @@ void abort_all_tasks()
     }
 }
 
+/* Every task that is in a pause goes on now. Ending a pause moves a task
+ * between the running and the paused lists, not within all_tasks. */
+void end_all_pauses()
+{
+    for (task_list::iterator task_it = all_tasks.begin();
+         task_it != all_tasks.end();
+         ++task_it) {
+        (*task_it)->end_pause();
+    }
+}
+
 void dump_tasks()
 {
     WARNING("---- %zu Active Tasks ----", all_tasks.size());
