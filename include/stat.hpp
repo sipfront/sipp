@@ -63,6 +63,7 @@ __________________________________________________________________________
 class CStat
 {
     friend class ScreenPrinter;
+    friend class MqttStats; /* mqtt_stat.cpp: reads what the statistics file gets */
 public:
 
     std::vector<int> error_codes;

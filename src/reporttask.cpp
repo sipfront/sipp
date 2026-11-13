@@ -38,7 +38,11 @@ class screentask *screentask::instance = nullptr;
 void stattask::initialize()
 {
     assert(!instance);
-    if (dumpInFile || useCountf || useErrorCodesf) {
+    bool wanted = dumpInFile || useCountf || useErrorCodesf;
+#ifdef USE_MQTT
+    wanted = wanted || mqtt_stats;
+#endif
+    if (wanted) {
         instance = new stattask();
     }
 }
@@ -95,6 +99,13 @@ unsigned int screentask::wake()
 
 void stattask::report()
 {
+#ifdef USE_MQTT
+    if (mqtt_stats) {
+        /* Instead of the -trace_stat file, and before -trace_error_codes
+         * empties the list of codes into its own. */
+        mqtt_report_stats();
+    } else
+#endif
     if(dumpInFile) {
         main_scenario->stats->dumpData();
     }
