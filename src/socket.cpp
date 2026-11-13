@@ -1331,7 +1331,12 @@ void process_message(SIPpSocket *socket, char *msg, ssize_t msg_size, struct soc
         } else { // mode != from SERVER and 3PCC Controller B, or out of call
             // This is a message that is not relating to any known call
             if (ooc_scenario) {
-                if (!get_reply_code(msg)) {
+                if (!get_reply_code(msg) && timeout_in_grace) {
+                    /* Its handler would be a call of its own, which the
+                     * grace would then wait for. */
+                    CStat::globalStat(CStat::E_OUT_OF_CALL_MSGS);
+                    TRACE_MSG("Discarded out-of-call message during the timeout grace\n");
+                } else if (!get_reply_code(msg)) {
                     size_t method_len = strcspn(msg, " \t\n\v\f\r");
                     ooc_scenario->stats->computeStat(CStat::E_CREATE_INCOMING_CALL);
                     WARNING("Received out-of-call %.*s message, using the out-of-call scenario", (int)method_len, msg);

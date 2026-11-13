@@ -454,6 +454,7 @@ void mqtt_stats_init()
     if (!mqtt_stats || !dumpInRtt) {
         return;
     }
+    mqtt_rtt_capture = true;
     for (const auto &s : rtt_scenarios) {
         if (*s.scn && (*s.scn)->stats) {
             MqttStats::capture_rtt((*s.scn)->stats);
@@ -472,7 +473,7 @@ void mqtt_report_stats()
     }
     mqtt_publish(mqtt_countstats_topic, counts_json(main_scenario));
     mqtt_publish(mqtt_codestats_topic, codes_json(main_scenario));
-    if (dumpInRtt) {
+    if (mqtt_rtt_capture) {
         /* A message for each scenario that measured some: the timers of
          * the scenario for the calls that come in (mixed mode) and of the
          * out-of-call scenario are not those of the main one. */
