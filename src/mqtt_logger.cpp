@@ -265,7 +265,10 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
         }
         memcpy(buf + max_len, cut_marker, sizeof(cut_marker));
     }
-    std::string strbuf = do_replace(std::string(buf), "\r?\n", "\\r\\n");
+    /* backslashes first: the replacements after it add their own, and a text cut
+     * right behind one ("\...") would otherwise end in a broken escape */
+    std::string strbuf = do_replace(std::string(buf), "\\\\", "\\\\");
+    strbuf = do_replace(strbuf, "\r?\n", "\\r\\n");
     strbuf = do_replace(strbuf, "\"", "\\\"");
 
 	jsonData
@@ -296,7 +299,8 @@ void print_errors_mqtt(int fatal, bool use_errno, int error, const char *fmt, va
 
 void print_message_mqtt(struct timeval *currentTime, const char* cid, const char* direction, const char *transport, const char *sock_type, ssize_t msg_size, const char *msg) {
     std::stringstream jsonData;
-    std::string strbuf = do_replace(std::string(msg), "\r?\n", "\\r\\n");
+    std::string strbuf = do_replace(std::string(msg), "\\\\", "\\\\");
+    strbuf = do_replace(strbuf, "\r?\n", "\\r\\n");
     strbuf = do_replace(strbuf, "\"", "\\\"");
 
     // if (quitting) {
