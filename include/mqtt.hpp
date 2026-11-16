@@ -131,7 +131,8 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
 
 /* A header line and a data line of the statistics file as one JSON object,
  * {"<column>":"<value>",...}. Columns without a name are left out; a data
- * line shorter than the header gives empty strings. */
+ * line shorter than the header gives empty strings; a name that was there
+ * before gets "#2", "#3", ... behind it, so no key is there twice. */
 std::string mqtt_csv_to_json(const std::string &header, const std::string &row, const std::string &delimiter);
 
 /* Response times, each the name of its timer and its milliseconds, as the

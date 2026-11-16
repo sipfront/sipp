@@ -36,6 +36,7 @@
 #include <iomanip>
 #include <locale>
 #include <map>
+#include <set>
 #include <sstream>
 
 #include "sipp.hpp"
@@ -132,6 +133,7 @@ std::string mqtt_csv_to_json(const std::string &header, const std::string &row, 
 {
     std::vector<std::string> names = mqtt_split(header, delimiter);
     std::vector<std::string> values = mqtt_split(row, delimiter);
+    std::set<std::string> seen;
     std::string json = "{";
     bool first = true;
 
@@ -140,12 +142,19 @@ std::string mqtt_csv_to_json(const std::string &header, const std::string &row, 
             /* every line of the file ends with a delimiter */
             continue;
         }
+        /* A key is there once. A scenario may name a counter like a column
+         * SIPp has itself (counter="SuccessfulCall"): the first column of a
+         * name, SIPp's own, keeps it, and one after it is "<name>#2". */
+        std::string name = names[i];
+        for (unsigned long n = 2; !seen.insert(name).second; n++) {
+            name = names[i] + "#" + std::to_string(n);
+        }
         if (!first) {
             json += ',';
         }
         first = false;
         json += '"';
-        json += mqtt_json_escape(names[i]);
+        json += mqtt_json_escape(name);
         json += "\":\"";
         if (i < values.size()) {
             json += mqtt_json_escape(values[i]);
@@ -536,6 +545,12 @@ TEST(mqtt, CsvToJson)
     /* a line shorter than its header, and a name that needs escaping */
     EXPECT_EQ("{\"a\":\"1\",\"b \\\"x\\\"\":\"\"}", mqtt_csv_to_json("a;b \"x\";", "1", ";"));
     EXPECT_EQ("{}", mqtt_csv_to_json("", "", ";"));
+    /* a counter named like a column of SIPp's own leaves that one its key */
+    EXPECT_EQ("{\"SuccessfulCall(C)\":\"20\",\"x\":\"1\",\"SuccessfulCall(C)#2\":\"7\"}",
+              mqtt_csv_to_json("SuccessfulCall(C);x;SuccessfulCall(C);", "20;1;7;", ";"));
+    /* and a third of the name, or a counter that has the second's, is told apart too */
+    EXPECT_EQ("{\"a\":\"1\",\"a#2\":\"2\",\"a#3\":\"3\",\"a#2#2\":\"4\"}",
+              mqtt_csv_to_json("a;a;a;a#2;", "1;2;3;4;", ";"));
 }
 
 TEST(mqtt, RttSummary)
