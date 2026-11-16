@@ -2224,10 +2224,18 @@ int main(int argc, char *argv[])
                 CHECK_PASS();
                 ERROR("SCTP support is required for the %s option.", argv[argi]);
                 break;
-            case SIPP_OPTION_NEED_MQTT:
+            case SIPP_OPTION_NEED_MQTT: {
+                /* Every MQTT option takes a value. It is stepped over, or
+                 * the passes before this option's would read it as the
+                 * remote host or as an option of its own and fail on that. */
+                const char *name = argv[argi];
+                if (argi + 1 < argc) {
+                    argi++;
+                }
                 CHECK_PASS();
-                ERROR("MQTT support is required for the %s option: build with -DUSE_MQTT=1.", argv[argi]);
+                ERROR("MQTT support is required for the %s option: build with -DUSE_MQTT=1.", name);
                 break;
+            }
             case SIPP_OPTION_MAX_SOCKET:
                 REQUIRE_ARG();
                 CHECK_PASS();
