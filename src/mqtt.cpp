@@ -151,6 +151,11 @@ static void on_disconnect(struct mosquitto *, void *, int rc)
 {
     mqtt_disconnect_reason = rc;
     mqtt_connected = false;
+    if (mqtt_pub_qos == 0) {
+        /* Nothing of it will be sent any more, see on_connect: an exit
+         * while the broker is away has nothing to wait for. */
+        mqtt_pending.reset();
+    }
 }
 
 static void on_publish(struct mosquitto *, void *, int mid)
@@ -166,15 +171,19 @@ int MqttPending::publish(const std::function<int(int *)> &send, const std::funct
      * delivery with locks of its own held that send wants. What it
      * reports meanwhile, this message perhaps, whose id is not known here
      * yet, is put aside in "early". */
+    unsigned long began;
     {
         std::lock_guard<std::mutex> lock(mutex);
         sending++;
+        began = resets;
     }
     int mid = 0;
     int rc = send(&mid);
     std::lock_guard<std::mutex> lock(mutex);
     bool done = early.erase(mid) > 0;
-    if (kept(rc) && !done) {
+    /* After a reset meanwhile the message is one of those the reset was
+     * for, or may be: it is not waited for, as no delivery might follow. */
+    if (kept(rc) && !done && began == resets) {
         waiting.insert(mid);
     }
     if (--sending == 0) {
@@ -196,6 +205,9 @@ void MqttPending::reset()
 {
     std::lock_guard<std::mutex> lock(mutex);
     waiting.clear();
+    /* What was put aside is of before, like the publishes under way. */
+    early.clear();
+    resets++;
 }
 
 size_t MqttPending::count()
@@ -525,6 +537,39 @@ TEST(mqtt, Pending)
     /* and that delivery is not held against the next message of the id */
     pending.publish(send(5, MOSQ_ERR_SUCCESS), kept_qos1);
     EXPECT_EQ(1u, pending.count());
+
+    /* counted off while it was handed over (a QoS 0 message accepted as
+     * the connection went, the reset of the reconnect before its id is
+     * known here): not waited for, no delivery would ever take it away */
+    pending.reset();
+    pending.publish(
+        [&](int *mid) {
+            *mid = 10;
+            pending.reset();
+            return (int)MOSQ_ERR_SUCCESS;
+        },
+        kept_qos1);
+    EXPECT_EQ(0u, pending.count());
+    /* the next one is waited for again */
+    pending.publish(send(11, MOSQ_ERR_SUCCESS), kept_qos1);
+    EXPECT_EQ(1u, pending.count());
+    pending.delivered(11);
+    /* a delivery put aside before a reset is not held against a message
+     * of after it; the publish under way over the reset is not waited for */
+    pending.publish(
+        [&](int *mid) {
+            pending.delivered(12);
+            pending.reset();
+            pending.publish(send(12, MOSQ_ERR_SUCCESS), kept_qos1);
+            *mid = 13;
+            return (int)MOSQ_ERR_SUCCESS;
+        },
+        kept_qos1);
+    EXPECT_EQ(1u, pending.count());
+    pending.delivered(13);
+    EXPECT_EQ(1u, pending.count());
+    pending.delivered(12);
+    EXPECT_EQ(0u, pending.count());
 
     /* counted off, a late delivery of it is nothing */
     pending.reset();
