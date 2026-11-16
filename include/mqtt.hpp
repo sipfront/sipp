@@ -70,6 +70,7 @@
 
 #ifdef USE_MQTT
 
+#include <deque>
 #include <functional>
 #include <mutex>
 #include <set>
@@ -123,6 +124,27 @@ void mqtt_trace_message(const struct timeval *now, const char *direction, const 
 
 /* ---- the pieces the messages are made of (no connection needed) ---- */
 
+/* Control messages on their way from libmosquitto's thread, which pushes
+ * them, to the main loop, which takes them: max_messages at most, the
+ * oldest goes for a new one; one longer than max_length is not taken. */
+class MqttControlQueue
+{
+public:
+    MqttControlQueue(size_t max_messages, size_t max_length) : max_messages(max_messages), max_length(max_length) {}
+    void push(const char *payload, size_t length);
+    /* The messages in the order they came, and how many were dropped for
+     * a new one and for their length since the last take. */
+    std::deque<std::string> take(unsigned long &dropped_since, unsigned long &oversized_since);
+
+private:
+    const size_t max_messages;
+    const size_t max_length;
+    std::mutex mutex;
+    std::deque<std::string> messages;
+    unsigned long dropped = 0;
+    unsigned long oversized = 0;
+};
+
 /* The messages libmosquitto holds and has not reported as delivered, by
  * their ids. A publish and libmosquitto's thread, which reports the
  * deliveries, meet here; any thread may call any of it. */
@@ -135,7 +157,8 @@ public:
     int publish(const std::function<int(int *)> &send, const std::function<bool(int)> &kept);
     /* A message is delivered. One that is not waited for is ignored. */
     void delivered(int mid);
-    /* Nothing is waited for any more. */
+    /* Nothing is waited for any more, a message whose publish is under
+     * way included. */
     void reset();
     size_t count();
 
@@ -146,6 +169,8 @@ private:
      * not waited for: one of them, whose id is not known yet. */
     int sending = 0;
     std::set<int> early;
+    /* How often reset() was called: a publish knows by it that one was. */
+    unsigned long resets = 0;
 };
 
 /* Whether libmosquitto holds a message after mosquitto_publish() returned
