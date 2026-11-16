@@ -46,7 +46,10 @@ are set to.
 ``-mqtt_stats_topic`` (default ``/sipp/stats``)
     The columns of the :doc:`statistics file <statistics>` as one object:
     the column names are the keys. ``StartTime`` and ``LastResetTime`` have
-    the format of ``CurrentTime``.
+    the format of ``CurrentTime``. A scenario counter named like a column
+    SIPp has itself (``counter="SuccessfulCall"``) does not take its key:
+    the counter is published as ``SuccessfulCall(P)#2`` and
+    ``SuccessfulCall(C)#2``.
 
     .. code-block:: json
 
