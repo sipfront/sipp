@@ -207,17 +207,22 @@ else()
 endif()
 
 # MQTT publishing (src/mqtt.cpp) needs libmosquitto: DEFAULT builds it in when
-# the library is there, ON or 1 requires it, OFF or 0 leaves it out.
+# the library is there, ON requires it, OFF leaves it out. ON and OFF may be
+# given in any spelling CMake takes for a boolean (1, TRUE, yes, 0, FALSE,
+# no, off, ...); anything else is refused rather than taken for DEFAULT.
 set(USE_MQTT "DEFAULT" CACHE STRING "Build with MQTT publishing (libmosquitto)")
-if(USE_MQTT STREQUAL "OFF" OR USE_MQTT STREQUAL "0")
+string(TOUPPER "${USE_MQTT}" USE_MQTT_VALUE)
+if(USE_MQTT_VALUE MATCHES "^(OFF|0|FALSE|NO|N)$")
   set(USE_MQTT 0)
+elseif(NOT USE_MQTT_VALUE MATCHES "^(DEFAULT|AUTO|ON|1|TRUE|YES|Y)$")
+  message(FATAL_ERROR "USE_MQTT must be DEFAULT, ON or OFF, not '${USE_MQTT}'")
 else()
   find_library(MOSQUITTO_LIBRARY mosquitto)
   find_path(MOSQUITTO_INCLUDE_DIR mosquitto.h)
   if(MOSQUITTO_LIBRARY AND MOSQUITTO_INCLUDE_DIR)
     message(STATUS "MQTT is enabled")
     set(USE_MQTT 1)
-  elseif(USE_MQTT STREQUAL "ON" OR USE_MQTT STREQUAL "1")
+  elseif(NOT USE_MQTT_VALUE MATCHES "^(DEFAULT|AUTO)$")
     message(FATAL_ERROR "USE_MQTT is ON, but libmosquitto is missing: install its development package")
   else()
     message(STATUS "MQTT is disabled")

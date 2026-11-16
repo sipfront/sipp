@@ -17,6 +17,13 @@ statistics went out.
 * A connection lost later is made again by itself, after 1, 2, 4 ... up to
   30 seconds. SIPp goes on meanwhile; what it cannot publish is counted and
   said in a warning, at most once every five seconds.
+* Nothing is kept for the broker while the connection is away, whatever
+  the QoS: a run that goes on for hours without its broker does not pay
+  for that with its memory. What was sent and not acknowledged when the
+  connection went (QoS 1 and 2) is sent again.
+* A broker that is slower than the run does not fill the memory either:
+  while ``-mqtt_max_queued`` messages (10000 by default, 0 for no limit)
+  wait for it, a new message is not published.
 * On exit SIPp waits for the broker to take what is still queued, for
   ``-mqtt_shutdelay`` seconds at most (3 by default).
 
@@ -31,6 +38,8 @@ Option                            Meaning
 ``-mqtt_client_id``               The client id. Default is a random one.
 ``-mqtt_keepalive``               Seconds, 5 at least. Default 5.
 ``-mqtt_pub_qos``                 0, 1 or 2. Default 1.
+``-mqtt_max_queued``              Messages that may wait for the broker.
+                                  Default 10000, 0 for no limit.
 ================================  ==========================================
 
 Statistics
