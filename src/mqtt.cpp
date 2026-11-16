@@ -93,6 +93,14 @@ static const unsigned long MQTT_FAILURE_REPORT_INTERVAL = 5000;
 
 static void on_connect(struct mosquitto *client, void *, int rc)
 {
+    if (rc == 0 && mqtt_pub_qos == 0) {
+        /* What libmosquitto had not written when the connection went is
+         * gone with it, and no callback says so: nothing waits now, or
+         * what was lost would count against -mqtt_max_queued for good.
+         * With QoS 1 and 2 it keeps the messages and reports them when
+         * the broker has them. */
+        mqtt_undelivered = 0;
+    }
     mqtt_connack = rc;
     if (rc == 0 && mqtt_ctrl) {
         /* On every connect: the session is a clean one, the broker does
@@ -154,7 +162,10 @@ static void on_disconnect(struct mosquitto *, void *, int rc)
 
 static void on_publish(struct mosquitto *, void *, int)
 {
-    mqtt_undelivered--;
+    /* Not below zero: libmosquitto may deliver a message it refused when
+     * the connection had just gone, and one counted off in on_connect. */
+    long waiting = mqtt_undelivered;
+    while (waiting > 0 && !mqtt_undelivered.compare_exchange_weak(waiting, waiting - 1)) {}
 }
 
 bool mqtt_active()
@@ -187,6 +198,9 @@ void mqtt_setup()
     }
     if (mqtt_pub_qos < 0 || mqtt_pub_qos > 2) {
         ERROR("-mqtt_pub_qos must be 0, 1 or 2, not %d", mqtt_pub_qos);
+    }
+    if (mqtt_max_queued < 0) {
+        ERROR("-mqtt_max_queued must be 0 (no limit) or more, not %d", mqtt_max_queued);
     }
     if (mqtt_keepalive < 5) {
         /* libmosquitto refuses less. */
@@ -304,16 +318,33 @@ bool mqtt_publish(const char *topic, const std::string &payload, bool quiet)
         mqtt_publishing--;
         return false;
     }
-    int rc =
-        mosquitto_publish(mqtt_client, nullptr, topic, (int)payload.length(), payload.c_str(), mqtt_pub_qos, false);
-    if (rc == MOSQ_ERR_SUCCESS) {
-        /* Before the shutdown is let go on: it waits for what is
-         * undelivered next, and has to find this message there. */
+    /* libmosquitto keeps a QoS 1 or 2 message until the broker has it,
+     * without a limit of its own, and takes one while there is no
+     * connection too (saying that it did not, or that it did, by its
+     * version). Kept for a broker that is away, or slower than the run,
+     * that is memory the run needs. So nothing is handed over while the
+     * connection is away, and while -mqtt_max_queued messages wait for the
+     * broker the new one is not either. */
+    const char *refused = nullptr;
+    if (!mqtt_connected) {
+        refused = mosquitto_strerror(MOSQ_ERR_NO_CONN);
+    } else if (mqtt_max_queued > 0 && mqtt_undelivered >= mqtt_max_queued) {
+        refused = "too many messages wait for the broker (-mqtt_max_queued)";
+    } else {
+        /* Counted first: a QoS 0 message is reported as sent from inside
+         * the call, and the shutdown, which waits for what is undelivered
+         * next, has to find this message there. */
         mqtt_undelivered++;
+        int rc =
+            mosquitto_publish(mqtt_client, nullptr, topic, (int)payload.length(), payload.c_str(), mqtt_pub_qos, false);
+        if (rc != MOSQ_ERR_SUCCESS) {
+            mqtt_undelivered--;
+            refused = mosquitto_strerror(rc);
+        }
     }
     /* Before the warning below, which is a publish of its own. */
     mqtt_publishing--;
-    if (rc == MOSQ_ERR_SUCCESS) {
+    if (!refused) {
         return true;
     }
 
@@ -326,8 +357,8 @@ bool mqtt_publish(const char *topic, const std::string &payload, bool quiet)
     unsigned long now = getmilliseconds();
     if (!mqtt_last_failure_report || now - mqtt_last_failure_report >= MQTT_FAILURE_REPORT_INTERVAL) {
         mqtt_last_failure_report = now ? now : 1;
-        WARNING("MQTT: could not publish to '%s': %s (%lu messages not published so far)", topic,
-                mosquitto_strerror(rc), mqtt_failed_publishes.load());
+        WARNING("MQTT: could not publish to '%s': %s (%lu messages not published so far)", topic, refused,
+                mqtt_failed_publishes.load());
     }
     return false;
 }
