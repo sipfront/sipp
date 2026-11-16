@@ -58,6 +58,9 @@
 
 #ifdef USE_MQTT
 
+#include <functional>
+#include <mutex>
+#include <set>
 #include <string>
 #include <vector>
 #include <sys/time.h>
@@ -89,6 +92,35 @@ void mqtt_poll();
 void mqtt_report_stats();
 
 /* ---- the pieces the messages are made of (no connection needed) ---- */
+
+/* The messages libmosquitto holds and has not reported as delivered, by
+ * their ids. A publish and libmosquitto's thread, which reports the
+ * deliveries, meet here; any thread may call any of it. */
+class MqttPending
+{
+public:
+    /* Calls send, which hands a message to libmosquitto and says its id,
+     * and waits for that message if kept(what send returned). Returns what
+     * send returned. */
+    int publish(const std::function<int(int *)> &send, const std::function<bool(int)> &kept);
+    /* A message is delivered. One that is not waited for is ignored. */
+    void delivered(int mid);
+    /* Nothing is waited for any more. */
+    void reset();
+    size_t count();
+
+private:
+    std::mutex mutex;
+    std::set<int> waiting;
+    /* The publishes under way, and what was delivered meanwhile that is
+     * not waited for: one of them, whose id is not known yet. */
+    int sending = 0;
+    std::set<int> early;
+};
+
+/* Whether libmosquitto holds a message after mosquitto_publish() returned
+ * rc for it. */
+bool mqtt_publish_kept(int rc, int qos);
 
 /* A string as the inside of a JSON string: quotes, backslashes and control
  * characters escaped, bytes that are not UTF-8 replaced by U+FFFD. */
