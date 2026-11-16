@@ -266,6 +266,7 @@ MAYBE_EXTERN int                mqtt_keepalive          DEFVAL(5);
 MAYBE_EXTERN int                mqtt_connect_timeout    DEFVAL(10);
 MAYBE_EXTERN int                mqtt_pub_qos            DEFVAL(1);
 MAYBE_EXTERN int                mqtt_shutdelay          DEFVAL(3);
+MAYBE_EXTERN int                mqtt_max_queued         DEFVAL(10000);
 MAYBE_EXTERN const char       * mqtt_stats_topic        DEFVAL("/sipp/stats");
 MAYBE_EXTERN const char       * mqtt_countstats_topic   DEFVAL("/sipp/countstats");
 MAYBE_EXTERN const char       * mqtt_codestats_topic    DEFVAL("/sipp/codestats");
