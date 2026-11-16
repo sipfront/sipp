@@ -94,7 +94,8 @@ public:
     int publish(const std::function<int(int *)> &send, const std::function<bool(int)> &kept);
     /* A message is delivered. One that is not waited for is ignored. */
     void delivered(int mid);
-    /* Nothing is waited for any more. */
+    /* Nothing is waited for any more, a message whose publish is under
+     * way included. */
     void reset();
     size_t count();
 
@@ -105,6 +106,8 @@ private:
      * not waited for: one of them, whose id is not known yet. */
     int sending = 0;
     std::set<int> early;
+    /* How often reset() was called: a publish knows by it that one was. */
+    unsigned long resets = 0;
 };
 
 /* Whether libmosquitto holds a message after mosquitto_publish() returned
