@@ -65,8 +65,9 @@ void mqtt_setup();
 void mqtt_shutdown();
 
 /* Publish a payload to a topic with -mqtt_pub_qos. Returns false when it was
- * not handed to the broker connection; that is reported as a warning, at most
- * once every few seconds. Main thread only. */
+ * not handed to the broker connection: there is none just now, or
+ * -mqtt_max_queued messages wait for the broker already. That is reported
+ * as a warning, at most once every few seconds. Main thread only. */
 bool mqtt_publish(const char *topic, const std::string &payload);
 
 /* True between a successful mqtt_setup() and mqtt_shutdown(). */
