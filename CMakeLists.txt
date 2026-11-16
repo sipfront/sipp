@@ -189,16 +189,21 @@ optional_library(PCAP "Build with PCAP playback support")
 optional_library(GSL "Build with improved statistical support")
 
 # The <curl> action (src/curl.cpp) needs libcurl: DEFAULT builds it in when
-# the library is there, ON or 1 requires it, OFF or 0 leaves it out.
+# the library is there, ON requires it, OFF leaves it out. ON and OFF may be
+# given in any spelling CMake takes for a boolean (1, TRUE, yes, 0, FALSE,
+# no, off, ...); anything else is refused rather than taken for DEFAULT.
 set(USE_CURL "DEFAULT" CACHE STRING "Build with the curl action (libcurl)")
-if(USE_CURL STREQUAL "OFF" OR USE_CURL STREQUAL "0")
+string(TOUPPER "${USE_CURL}" USE_CURL_VALUE)
+if(USE_CURL_VALUE MATCHES "^(OFF|0|FALSE|NO|N)$")
   set(USE_CURL 0)
+elseif(NOT USE_CURL_VALUE MATCHES "^(DEFAULT|AUTO|ON|1|TRUE|YES|Y)$")
+  message(FATAL_ERROR "USE_CURL must be DEFAULT, ON or OFF, not '${USE_CURL}'")
 else()
   find_package(CURL QUIET)
   if(CURL_FOUND)
     message(STATUS "CURL is enabled")
     set(USE_CURL 1)
-  elseif(USE_CURL STREQUAL "ON" OR USE_CURL STREQUAL "1")
+  elseif(NOT USE_CURL_VALUE MATCHES "^(DEFAULT|AUTO)$")
     message(FATAL_ERROR "USE_CURL is ON, but libcurl is missing: install its development package")
   else()
     message(STATUS "CURL is disabled")
