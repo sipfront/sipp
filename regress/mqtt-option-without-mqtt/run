@@ -1,0 +1,25 @@
+#!/bin/sh
+# This regression test is a part of SIPp.
+# A build without MQTT says so for an -mqtt_* option, whatever its value
+# is: the value is not read as the remote host (which gave "remote_host
+# given multiple times") or as an option of its own ("Invalid argument").
+. "`dirname "$0"`/../functions"; init
+
+PAGER=cat "$SIPP" -h 2>&1 </dev/null | grep -q -- "-mqtt_host" &&
+    skip "sipp is built with MQTT"
+
+check() {
+    out=`"$SIPP" -nostdin "$@" 2>&1 </dev/null`
+    status=$?
+    test $status -eq 255 || fail "sipp $* exited with $status, not 255"
+    case $out in
+        *"MQTT support is required for the $1 option"*) ;;
+        *) fail "sipp $*: `echo "$out" | tail -n 1`" ;;
+    esac
+}
+
+check -mqtt_host broker.example.com -sn uac 127.0.0.1
+check -mqtt_pass -secret -sn uac 127.0.0.1
+check -mqtt_stats 1 -mqtt_port 1883 -sn uac 127.0.0.1
+check -mqtt_stats
+ok
