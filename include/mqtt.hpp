@@ -58,6 +58,7 @@
 
 #ifdef USE_MQTT
 
+#include <deque>
 #include <functional>
 #include <mutex>
 #include <set>
@@ -92,6 +93,27 @@ void mqtt_poll();
 void mqtt_report_stats();
 
 /* ---- the pieces the messages are made of (no connection needed) ---- */
+
+/* Control messages on their way from libmosquitto's thread, which pushes
+ * them, to the main loop, which takes them: max_messages at most, the
+ * oldest goes for a new one; one longer than max_length is not taken. */
+class MqttControlQueue
+{
+public:
+    MqttControlQueue(size_t max_messages, size_t max_length) : max_messages(max_messages), max_length(max_length) {}
+    void push(const char *payload, size_t length);
+    /* The messages in the order they came, and how many were dropped for
+     * a new one and for their length since the last take. */
+    std::deque<std::string> take(unsigned long &dropped_since, unsigned long &oversized_since);
+
+private:
+    const size_t max_messages;
+    const size_t max_length;
+    std::mutex mutex;
+    std::deque<std::string> messages;
+    unsigned long dropped = 0;
+    unsigned long oversized = 0;
+};
 
 /* The messages libmosquitto holds and has not reported as delivered, by
  * their ids. A publish and libmosquitto's thread, which reports the

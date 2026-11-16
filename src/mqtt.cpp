@@ -55,15 +55,14 @@ static MqttPending mqtt_pending;
 /* Control messages on their way from libmosquitto's thread to the main loop.
  * A sender that floods the topic gets its oldest messages dropped, not SIPp's
  * memory. */
-static std::mutex mqtt_control_mutex;
-static std::deque<std::string> mqtt_control_queue;
-static std::atomic<bool> mqtt_control_pending(false);
-static std::atomic<unsigned long> mqtt_control_dropped(0);
 static const size_t MQTT_CONTROL_QUEUE_MAX = 256;
 /* Nor does one message take it: what the control socket could not carry
  * (its datagram is read into SIPP_MAX_MSG_SIZE - 1 bytes) is not queued. */
 static const size_t MQTT_CONTROL_MESSAGE_MAX = SIPP_MAX_MSG_SIZE - 1;
-static std::atomic<unsigned long> mqtt_control_oversized(0);
+static MqttControlQueue mqtt_control_queue(MQTT_CONTROL_QUEUE_MAX, MQTT_CONTROL_MESSAGE_MAX);
+/* Something for mqtt_poll() to do: messages, or a word about them or about
+ * the subscription. */
+static std::atomic<bool> mqtt_control_pending(false);
 /* The result of the last subscribe, a MOSQ_ERR_* value: the request was
  * handed over, no more. */
 static std::atomic<int> mqtt_subscribe_result(0);
@@ -133,18 +132,34 @@ static void on_message(struct mosquitto *, void *, const struct mosquitto_messag
     if (!message->payload || message->payloadlen <= 0) {
         return;
     }
-    if ((size_t)message->payloadlen > MQTT_CONTROL_MESSAGE_MAX) {
-        mqtt_control_oversized++;
-        mqtt_control_pending = true;
+    mqtt_control_queue.push((const char *)message->payload, (size_t)message->payloadlen);
+    mqtt_control_pending = true;
+}
+
+void MqttControlQueue::push(const char *payload, size_t length)
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    if (length > max_length) {
+        oversized++;
         return;
     }
-    std::lock_guard<std::mutex> lock(mqtt_control_mutex);
-    if (mqtt_control_queue.size() >= MQTT_CONTROL_QUEUE_MAX) {
-        mqtt_control_queue.pop_front();
-        mqtt_control_dropped++;
+    if (messages.size() >= max_messages) {
+        messages.pop_front();
+        dropped++;
     }
-    mqtt_control_queue.emplace_back((const char *)message->payload, (size_t)message->payloadlen);
-    mqtt_control_pending = true;
+    messages.emplace_back(payload, length);
+}
+
+std::deque<std::string> MqttControlQueue::take(unsigned long &dropped_since, unsigned long &oversized_since)
+{
+    std::deque<std::string> taken;
+    std::lock_guard<std::mutex> lock(mutex);
+    taken.swap(messages);
+    dropped_since = dropped;
+    oversized_since = oversized;
+    dropped = 0;
+    oversized = 0;
+    return taken;
 }
 
 static void on_disconnect(struct mosquitto *, void *, int rc)
@@ -414,17 +429,13 @@ void mqtt_poll()
     if (!mqtt_control_pending) {
         return;
     }
-    std::deque<std::string> messages;
-    {
-        std::lock_guard<std::mutex> lock(mqtt_control_mutex);
-        messages.swap(mqtt_control_queue);
-        mqtt_control_pending = false;
-    }
-    unsigned long dropped = mqtt_control_dropped.exchange(0);
+    /* Before the take: what comes after it sets the flag again. */
+    mqtt_control_pending = false;
+    unsigned long dropped, oversized;
+    std::deque<std::string> messages = mqtt_control_queue.take(dropped, oversized);
     if (dropped) {
         WARNING("MQTT: %lu control messages dropped, they came faster than they could be run", dropped);
     }
-    unsigned long oversized = mqtt_control_oversized.exchange(0);
     if (oversized) {
         WARNING("MQTT: %lu control messages dropped, they were longer than %lu bytes", oversized,
                 (unsigned long)MQTT_CONTROL_MESSAGE_MAX);
@@ -577,6 +588,85 @@ TEST(mqtt, Pending)
     pending.delivered(5);
     pending.publish(send(6, MOSQ_ERR_SUCCESS), kept_qos1);
     EXPECT_EQ(1u, pending.count());
+}
+
+TEST(mqtt, ControlQueue)
+{
+    unsigned long dropped = 99, oversized = 99;
+    MqttControlQueue queue(256, 8);
+
+    /* nothing in it */
+    EXPECT_TRUE(queue.take(dropped, oversized).empty());
+    EXPECT_EQ(0u, dropped);
+    EXPECT_EQ(0u, oversized);
+
+    /* in the order they came, whatever bytes they are */
+    queue.push("first", 5);
+    queue.push("2nd", 3);
+    queue.push("a\0b", 3);
+    std::deque<std::string> messages = queue.take(dropped, oversized);
+    EXPECT_EQ((std::deque<std::string>{"first", "2nd", std::string("a\0b", 3)}), messages);
+    EXPECT_EQ(0u, dropped);
+    EXPECT_EQ(0u, oversized);
+    /* and taken once */
+    EXPECT_TRUE(queue.take(dropped, oversized).empty());
+
+    /* as long as the longest is taken, one byte more is not */
+    queue.push("12345678", 8);
+    queue.push("123456789", 9);
+    queue.push("ok", 2);
+    messages = queue.take(dropped, oversized);
+    EXPECT_EQ((std::deque<std::string>{"12345678", "ok"}), messages);
+    EXPECT_EQ(0u, dropped);
+    EXPECT_EQ(1u, oversized);
+
+    /* 256 are kept */
+    for (int i = 1; i <= 256; i++) {
+        queue.push(std::to_string(i).c_str(), std::to_string(i).length());
+    }
+    messages = queue.take(dropped, oversized);
+    ASSERT_EQ(256u, messages.size());
+    EXPECT_EQ("1", messages.front());
+    EXPECT_EQ("256", messages.back());
+    /* the counts are of the time since the last take */
+    EXPECT_EQ(0u, dropped);
+    EXPECT_EQ(0u, oversized);
+
+    /* the 257th takes the place of the oldest, the 258th of the next */
+    for (int i = 1; i <= 258; i++) {
+        queue.push(std::to_string(i).c_str(), std::to_string(i).length());
+    }
+    /* one that is too long takes nobody's place */
+    queue.push("123456789", 9);
+    messages = queue.take(dropped, oversized);
+    ASSERT_EQ(256u, messages.size());
+    EXPECT_EQ("3", messages.front());
+    EXPECT_EQ("4", messages[1]);
+    EXPECT_EQ("258", messages.back());
+    EXPECT_EQ(2u, dropped);
+    EXPECT_EQ(1u, oversized);
+    EXPECT_TRUE(queue.take(dropped, oversized).empty());
+    EXPECT_EQ(0u, dropped);
+    EXPECT_EQ(0u, oversized);
+}
+
+TEST(mqtt, ControlQueueLimits)
+{
+    /* what -mqtt_ctrl runs with: 256 messages, each as long as a datagram
+     * of the control socket may be */
+    unsigned long dropped, oversized;
+    EXPECT_EQ(256u, MQTT_CONTROL_QUEUE_MAX);
+    EXPECT_EQ((size_t)SIPP_MAX_MSG_SIZE - 1, MQTT_CONTROL_MESSAGE_MAX);
+    MqttControlQueue queue(MQTT_CONTROL_QUEUE_MAX, MQTT_CONTROL_MESSAGE_MAX);
+    std::string longest(MQTT_CONTROL_MESSAGE_MAX, 'x');
+    std::string too_long(MQTT_CONTROL_MESSAGE_MAX + 1, 'x');
+    queue.push(longest.data(), longest.length());
+    queue.push(too_long.data(), too_long.length());
+    std::deque<std::string> messages = queue.take(dropped, oversized);
+    ASSERT_EQ(1u, messages.size());
+    EXPECT_EQ(longest, messages.front());
+    EXPECT_EQ(0u, dropped);
+    EXPECT_EQ(1u, oversized);
 }
 #endif /* GTEST */
 
