@@ -47,7 +47,7 @@ static std::atomic<int> mqtt_connack(-1);
 static std::atomic<int> mqtt_disconnect_reason(0);
 /* Messages handed to libmosquitto that it has not reported as delivered:
  * sent for QoS 0, acknowledged by the broker for QoS 1 and 2. */
-static std::atomic<long> mqtt_undelivered(0);
+static MqttPending mqtt_pending;
 
 /* Main thread only. */
 static bool mqtt_was_connected = false;
@@ -65,7 +65,7 @@ static void on_connect(struct mosquitto *, void *, int rc)
          * what was lost would count against -mqtt_max_queued for good.
          * With QoS 1 and 2 it keeps the messages and reports them when
          * the broker has them. */
-        mqtt_undelivered = 0;
+        mqtt_pending.reset();
     }
     mqtt_connack = rc;
     mqtt_connected = (rc == 0);
@@ -77,12 +77,63 @@ static void on_disconnect(struct mosquitto *, void *, int rc)
     mqtt_connected = false;
 }
 
-static void on_publish(struct mosquitto *, void *, int)
+static void on_publish(struct mosquitto *, void *, int mid)
 {
-    /* Not below zero: libmosquitto may deliver a message it refused when
-     * the connection had just gone, and one counted off in on_connect. */
-    long waiting = mqtt_undelivered;
-    while (waiting > 0 && !mqtt_undelivered.compare_exchange_weak(waiting, waiting - 1)) {}
+    /* By its id: a message that is not waited for (one counted off in
+     * on_connect) takes no other message's place. */
+    mqtt_pending.delivered(mid);
+}
+
+int MqttPending::publish(const std::function<int(int *)> &send, const std::function<bool(int)> &kept)
+{
+    /* No lock while send runs: libmosquitto's thread may report a
+     * delivery with locks of its own held that send wants. What it
+     * reports meanwhile, this message perhaps, whose id is not known here
+     * yet, is put aside in "early". */
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        sending++;
+    }
+    int mid = 0;
+    int rc = send(&mid);
+    std::lock_guard<std::mutex> lock(mutex);
+    bool done = early.erase(mid) > 0;
+    if (kept(rc) && !done) {
+        waiting.insert(mid);
+    }
+    if (--sending == 0) {
+        /* Deliveries of messages nobody waits for. */
+        early.clear();
+    }
+    return rc;
+}
+
+void MqttPending::delivered(int mid)
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    if (!waiting.erase(mid) && sending > 0) {
+        early.insert(mid);
+    }
+}
+
+void MqttPending::reset()
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    waiting.clear();
+}
+
+size_t MqttPending::count()
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    return waiting.size();
+}
+
+bool mqtt_publish_kept(int rc, int qos)
+{
+    /* MOSQ_ERR_NO_CONN for QoS 1 and 2 is the connection that went between
+     * our look at it and the call: libmosquitto says no, and has put the
+     * message with those it sends when the broker is back. */
+    return rc == MOSQ_ERR_SUCCESS || (rc == MOSQ_ERR_NO_CONN && qos > 0);
 }
 
 bool mqtt_active()
@@ -203,18 +254,20 @@ bool mqtt_publish(const char *topic, const std::string &payload)
     const char *refused = nullptr;
     if (!mqtt_connected) {
         refused = mosquitto_strerror(MOSQ_ERR_NO_CONN);
-    } else if (mqtt_max_queued > 0 && mqtt_undelivered >= mqtt_max_queued) {
+    } else if (mqtt_max_queued > 0 && mqtt_pending.count() >= (size_t)mqtt_max_queued) {
         refused = "too many messages wait for the broker (-mqtt_max_queued)";
     } else {
-        /* Counted first: a QoS 0 message is reported as sent from inside
-         * the call. */
-        mqtt_undelivered++;
-        int rc =
-            mosquitto_publish(mqtt_client, nullptr, topic, (int)payload.length(), payload.c_str(), mqtt_pub_qos, false);
-        if (rc == MOSQ_ERR_SUCCESS) {
+        /* What libmosquitto has taken is waited for by its id, whatever
+         * it said: -mqtt_max_queued and the exit count what it holds. */
+        int rc = mqtt_pending.publish(
+            [&](int *mid) {
+                return mosquitto_publish(mqtt_client, mid, topic, (int)payload.length(), payload.c_str(), mqtt_pub_qos,
+                                         false);
+            },
+            [](int result) { return mqtt_publish_kept(result, mqtt_pub_qos); });
+        if (mqtt_publish_kept(rc, mqtt_pub_qos)) {
             return true;
         }
-        mqtt_undelivered--;
         refused = mosquitto_strerror(rc);
     }
 
@@ -240,7 +293,7 @@ void mqtt_shutdown()
      * -mqtt_shutdelay is over. A connection that is gone just now does not
      * end the wait: the thread connects again and sends what is left. */
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(mqtt_shutdelay > 0 ? mqtt_shutdelay : 0);
-    while (mqtt_undelivered > 0 && std::chrono::steady_clock::now() < deadline) {
+    while (mqtt_pending.count() > 0 && std::chrono::steady_clock::now() < deadline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -259,5 +312,77 @@ void mqtt_shutdown()
     mqtt_connected = false;
     mqtt_was_connected = false;
 }
+
+#ifdef GTEST
+#include "gtest/gtest.h"
+
+static bool kept_qos1(int rc)
+{
+    return mqtt_publish_kept(rc, 1);
+}
+
+TEST(mqtt, PublishKept)
+{
+    EXPECT_TRUE(mqtt_publish_kept(MOSQ_ERR_SUCCESS, 0));
+    EXPECT_TRUE(mqtt_publish_kept(MOSQ_ERR_SUCCESS, 1));
+    /* without a connection a QoS 0 message is gone, a QoS 1 or 2 one is kept */
+    EXPECT_FALSE(mqtt_publish_kept(MOSQ_ERR_NO_CONN, 0));
+    EXPECT_TRUE(mqtt_publish_kept(MOSQ_ERR_NO_CONN, 1));
+    EXPECT_TRUE(mqtt_publish_kept(MOSQ_ERR_NO_CONN, 2));
+    EXPECT_FALSE(mqtt_publish_kept(MOSQ_ERR_PAYLOAD_SIZE, 1));
+}
+
+TEST(mqtt, Pending)
+{
+    MqttPending pending;
+    auto send = [](int id, int rc) {
+        return [=](int *mid) {
+            *mid = id;
+            return rc;
+        };
+    };
+
+    EXPECT_EQ(MOSQ_ERR_SUCCESS, pending.publish(send(1, MOSQ_ERR_SUCCESS), kept_qos1));
+    EXPECT_EQ(MOSQ_ERR_SUCCESS, pending.publish(send(2, MOSQ_ERR_SUCCESS), kept_qos1));
+    EXPECT_EQ(2u, pending.count());
+    /* what libmosquitto did not take is not waited for */
+    EXPECT_EQ(MOSQ_ERR_PAYLOAD_SIZE, pending.publish(send(3, MOSQ_ERR_PAYLOAD_SIZE), kept_qos1));
+    EXPECT_EQ(2u, pending.count());
+    /* what it took while it said there is no connection is */
+    EXPECT_EQ(MOSQ_ERR_NO_CONN, pending.publish(send(4, MOSQ_ERR_NO_CONN), kept_qos1));
+    EXPECT_EQ(3u, pending.count());
+
+    /* a delivery nobody waits for takes no other message's place */
+    pending.delivered(3);
+    pending.delivered(99);
+    EXPECT_EQ(3u, pending.count());
+    pending.delivered(4);
+    pending.delivered(4);
+    EXPECT_EQ(2u, pending.count());
+    pending.delivered(1);
+    pending.delivered(2);
+    EXPECT_EQ(0u, pending.count());
+
+    /* delivered from inside the call, before the id is known here */
+    pending.publish(
+        [&](int *mid) {
+            *mid = 5;
+            pending.delivered(5);
+            return (int)MOSQ_ERR_SUCCESS;
+        },
+        kept_qos1);
+    EXPECT_EQ(0u, pending.count());
+    /* and that delivery is not held against the next message of the id */
+    pending.publish(send(5, MOSQ_ERR_SUCCESS), kept_qos1);
+    EXPECT_EQ(1u, pending.count());
+
+    /* counted off, a late delivery of it is nothing */
+    pending.reset();
+    EXPECT_EQ(0u, pending.count());
+    pending.delivered(5);
+    pending.publish(send(6, MOSQ_ERR_SUCCESS), kept_qos1);
+    EXPECT_EQ(1u, pending.count());
+}
+#endif /* GTEST */
 
 #endif /* USE_MQTT */
