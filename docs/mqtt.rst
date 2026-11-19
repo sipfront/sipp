@@ -17,13 +17,6 @@ statistics went out.
 * A connection lost later is made again by itself, after 1, 2, 4 ... up to
   30 seconds. SIPp goes on meanwhile; what it cannot publish is counted and
   said in a warning, at most once every five seconds.
-* Nothing is kept for the broker while the connection is away, whatever
-  the QoS: a run that goes on for hours without its broker does not pay
-  for that with its memory. What was sent and not acknowledged when the
-  connection went (QoS 1 and 2) is sent again.
-* A broker that is slower than the run does not fill the memory either:
-  while ``-mqtt_max_queued`` messages (10000 by default, 0 for no limit)
-  wait for it, a new message is not published.
 * On exit SIPp waits for the broker to take what is still queued, for
   ``-mqtt_shutdelay`` seconds at most (3 by default).
 
@@ -38,8 +31,6 @@ Option                            Meaning
 ``-mqtt_client_id``               The client id. Default is a random one.
 ``-mqtt_keepalive``               Seconds, 5 at least. Default 5.
 ``-mqtt_pub_qos``                 0, 1 or 2. Default 1.
-``-mqtt_max_queued``              Messages that may wait for the broker.
-                                  Default 10000, 0 for no limit.
 ================================  ==========================================
 
 Statistics
@@ -55,10 +46,7 @@ are set to.
 ``-mqtt_stats_topic`` (default ``/sipp/stats``)
     The columns of the :doc:`statistics file <statistics>` as one object:
     the column names are the keys. ``StartTime`` and ``LastResetTime`` have
-    the format of ``CurrentTime``. A scenario counter named like a column
-    SIPp has itself (``counter="SuccessfulCall"``) does not take its key:
-    the counter is published as ``SuccessfulCall(P)#2`` and
-    ``SuccessfulCall(C)#2``.
+    the format of ``CurrentTime``.
 
     .. code-block:: json
 
@@ -91,6 +79,24 @@ are set to.
 
        {"CurrentTime":"2026-11-13 18:45:53.954701",
         "ElapsedTime":"00:00:04:534000", "ErrorCodes":[503,503,486]}
+
+``-mqtt_rttstats_topic`` (default ``/sipp/rttstats``), with ``-trace_rtt``
+    The response times of the interval, per timer (``rtd``): how many there
+    were and, in milliseconds, their minimum, mean, median, 90th, 95th and
+    99th percentile and maximum. An interval without a response time
+    publishes nothing. ``Scenario`` says whose timers they are: ``main``,
+    ``rx`` (the scenario for the calls that come in, in mixed mode) or
+    ``ooc`` (the out-of-call scenario); each has a message of its own. The ``-trace_rtt`` file, which lists every single
+    time, is not written: a load test has thousands of them a second, and
+    a message that listed them would outgrow what brokers take.
+
+    .. code-block:: json
+
+       {"CurrentTime":"2026-11-13 20:47:43.814747",
+        "ElapsedTime":"00:00:01:027000", "Scenario":"main",
+        "ResponseTimes":[
+          {"Name":"1","Count":"49","Min":"3.488","Mean":"4.259","P50":"4.039",
+           "P90":"5.190","P95":"5.328","P99":"7.680","Max":"7.680"}]}
 
 Remote control
 --------------
