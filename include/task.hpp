@@ -99,6 +99,9 @@ public:
     /* Our abort action. */
     virtual void abort();
 
+    /* End a pause the task is in, so that it goes on now (-timeout_grace). */
+    virtual void end_pause() {}
+
     /* Dump task info to error log. */
     virtual void dump() = 0;
 
@@ -137,6 +140,7 @@ task_list * get_all_tasks();
 int expire_paused_tasks();
 int paused_tasks_count();
 void abort_all_tasks();
+void end_all_pauses();
 void dump_tasks();
 
 #endif
