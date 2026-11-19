@@ -107,7 +107,7 @@ void screen_init()
 void print_statistics(int last)
 {
     if (!noscreen && backgroundMode == false && display_scenario) {
-      sp->redraw();
+        sp->redraw();
     }
 }
 
