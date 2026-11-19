@@ -494,16 +494,30 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
     const char* const bufEnd = &screen_last_error[bufSize];
     char* c = screen_last_error;
     _advance(c, snprintf(c, bufEnd - c, "%s: ", CStat::formatTime(&currentTime, rfc3339)));
+    const char *const text = c < bufEnd ? c : bufEnd - 1;
     if (c < bufEnd) {
         _advance(c, vsnprintf(c, bufEnd - c, fmt, ap));
     }
+#ifdef USE_MQTT
+    /* With -mqtt_stats the errors of -trace_err go to the broker and not to
+     * the error log: the text alone, the time and errno are fields of the
+     * message. A fatal one is still printed to stderr below. */
+    const bool to_mqtt = mqtt_errors_enabled();
+    if (to_mqtt) {
+        mqtt_publish_error(&currentTime, fatal, std::string(text, (c < bufEnd ? c : bufEnd - 1) - text),
+                           use_errno ? error : 0);
+    }
+#else
+    const bool to_mqtt = false;
+    (void)text;
+#endif
     if (use_errno && c < bufEnd) {
         _advance(c, snprintf(c, bufEnd - c, ", errno = %d (%s)", error, strerror(error)));
     }
     total_errors++;
     last_error_shown = false;
 
-    if (!error_lfi.fptr && print_all_responses) {
+    if (!to_mqtt && !error_lfi.fptr && print_all_responses) {
         rotate_errorf();
         if (error_lfi.fptr) {
             fprintf(error_lfi.fptr, "The following events occurred:\n");
@@ -517,7 +531,7 @@ static void _screen_error(int fatal, bool use_errno, int error, const char *fmt,
         }
     }
 
-    if (error_lfi.fptr) {
+    if (!to_mqtt && error_lfi.fptr) {
         count += fprintf(error_lfi.fptr, "%s\n", screen_last_error);
         fflush(error_lfi.fptr);
         if (ringbuffer_size && count > ringbuffer_size) {

@@ -41,6 +41,12 @@
 #endif
 
 static struct mosquitto *mqtt_client = nullptr;
+/* Set while mqtt_client may be used: WARNING() asks from any thread. */
+static std::atomic<bool> mqtt_is_active(false);
+/* The publishes that are in libmosquitto right now. One that began before
+ * mqtt_shutdown() cleared the flag above still holds the client: the
+ * shutdown waits for this to be zero before it destroys it. */
+static std::atomic<int> mqtt_publishing(0);
 
 /* Written by libmosquitto's thread, read by the main thread. */
 static std::atomic<bool> mqtt_connected(false);
@@ -77,7 +83,8 @@ static std::atomic<int> mqtt_subscribe_failed(0);
 
 /* Main thread only. */
 static bool mqtt_was_connected = false;
-static unsigned long mqtt_failed_publishes = 0;
+/* Any thread. */
+static std::atomic<unsigned long> mqtt_failed_publishes(0);
 static unsigned long mqtt_last_failure_report = 0;
 
 /* How often, at most, a failing publish is reported (ms). */
@@ -241,7 +248,7 @@ bool mqtt_publish_kept(int rc, int qos)
 
 bool mqtt_active()
 {
-    return mqtt_client != nullptr;
+    return mqtt_is_active;
 }
 
 /* A change of the connection's state is said once, from the main thread. */
@@ -343,6 +350,7 @@ void mqtt_setup()
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
     mqtt_was_connected = true;
+    mqtt_is_active = true;
     if (mqtt_ctrl) {
         if (mqtt_subscribe_result != MOSQ_ERR_SUCCESS) {
             int result = mqtt_subscribe_result;
@@ -372,13 +380,22 @@ void mqtt_setup()
     }
 }
 
-bool mqtt_publish(const char *topic, const std::string &payload)
+bool mqtt_publish(const char *topic, const std::string &payload, bool quiet)
 {
-    if (!mqtt_client || !topic) {
+    if (!mqtt_is_active || !topic) {
         return false;
     }
-    mqtt_report_connection();
+    if (!quiet) {
+        mqtt_report_connection();
+    }
 
+    /* Counted first and asked again: either the shutdown sees this publish
+     * and waits for it, or this publish sees the shutdown and leaves. */
+    mqtt_publishing++;
+    if (!mqtt_is_active) {
+        mqtt_publishing--;
+        return false;
+    }
     /* libmosquitto keeps a QoS 1 or 2 message until the broker has it,
      * without a limit of its own, and takes one while there is no
      * connection too (saying that it did not, or that it did, by its
@@ -393,27 +410,36 @@ bool mqtt_publish(const char *topic, const std::string &payload)
         refused = "too many messages wait for the broker (-mqtt_max_queued)";
     } else {
         /* What libmosquitto has taken is waited for by its id, whatever
-         * it said: -mqtt_max_queued and the exit count what it holds. */
+         * it said: -mqtt_max_queued and the exit count what it holds. It
+         * is there before the shutdown is let go on, which waits for
+         * what is undelivered next. */
         int rc = mqtt_pending.publish(
             [&](int *mid) {
                 return mosquitto_publish(mqtt_client, mid, topic, (int)payload.length(), payload.c_str(), mqtt_pub_qos,
                                          false);
             },
             [](int result) { return mqtt_publish_kept(result, mqtt_pub_qos); });
-        if (mqtt_publish_kept(rc, mqtt_pub_qos)) {
-            return true;
+        if (!mqtt_publish_kept(rc, mqtt_pub_qos)) {
+            refused = mosquitto_strerror(rc);
         }
-        refused = mosquitto_strerror(rc);
+    }
+    /* Before the warning below, which is a publish of its own. */
+    mqtt_publishing--;
+    if (!refused) {
+        return true;
     }
 
     /* Counted, and said at most every few seconds: a broker that is away
      * while a load test fails must not add a warning per message. */
     mqtt_failed_publishes++;
+    if (quiet) {
+        return false;
+    }
     unsigned long now = getmilliseconds();
     if (!mqtt_last_failure_report || now - mqtt_last_failure_report >= MQTT_FAILURE_REPORT_INTERVAL) {
         mqtt_last_failure_report = now ? now : 1;
         WARNING("MQTT: could not publish to '%s': %s (%lu messages not published so far)", topic, refused,
-                mqtt_failed_publishes);
+                mqtt_failed_publishes.load());
     }
     return false;
 }
@@ -460,6 +486,13 @@ void mqtt_shutdown()
 {
     if (!mqtt_client) {
         return;
+    }
+    /* From here on errors go to the error log again, and no publish
+     * begins. One that an RTP thread's warning began just before is let
+     * out of libmosquitto, which does not keep it long: it queues. */
+    mqtt_is_active = false;
+    while (mqtt_publishing > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     /* What is queued gets its chance: until everything is delivered or
