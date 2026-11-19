@@ -108,7 +108,7 @@
 <!ELEMENT CallLengthRepartition EMPTY >
 <!ATTLIST CallLengthRepartition value CDATA #REQUIRED >
 
-<!ELEMENT action ( add | assign | assignstr | closecon | divide | ereg | error | exec | gettimeofday | index | insert | jump | log | lookup | multiply | pauserestore | replace | rtp_dtmf | rtp_echo | rtp_stats | sample | setdest | strcmp | subtract | test | todouble | trim | urldecode | urlencode | verifyauth | warning )+ >
+<!ELEMENT action ( add | assign | assignstr | closecon | curl | divide | ereg | error | exec | gettimeofday | index | insert | jump | log | lookup | multiply | pauserestore | replace | rtp_dtmf | rtp_echo | rtp_stats | sample | setdest | strcmp | subtract | test | todouble | trim | urldecode | urlencode | verifyauth | warning )+ >
 
 <!-- BEGIN actions -->
 
@@ -149,6 +149,12 @@
 
 <!ELEMENT warning EMPTY >
 <!ATTLIST warning message CDATA #REQUIRED >
+
+<!ELEMENT curl EMPTY >
+<!ATTLIST curl url CDATA #REQUIRED >
+<!ATTLIST curl method CDATA #IMPLIED >
+<!ATTLIST curl data CDATA #IMPLIED >
+<!ATTLIST curl content_type CDATA #IMPLIED >
 
 <!ELEMENT error EMPTY >
 <!ATTLIST error message CDATA #REQUIRED >
