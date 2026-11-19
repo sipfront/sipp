@@ -79,6 +79,7 @@
 #include "ratetask.hpp"
 #include "watchdog.hpp"
 #include "mqtt.hpp"
+#include "curl.hpp"
 
 /*
  * If this files is included in the Main, then extern definitions
@@ -209,6 +210,8 @@ cmd messages are received */
 
 /************ User controls and command line options ***********/
 
+/* A table in columns, as the options in sipp.cpp are: kept as it is. */
+// clang-format off
 MAYBE_EXTERN int                duration                DEFVAL(0);
 MAYBE_EXTERN double             rate                    DEFVAL(DEFAULT_RATE);
 MAYBE_EXTERN bool               rate_set                DEFVAL(false);
@@ -251,6 +254,10 @@ MAYBE_EXTERN bool               rfc3339                 DEFVAL(false);
 MAYBE_EXTERN bool               periodic_rtd            DEFVAL(false);
 MAYBE_EXTERN const char       * stat_delimiter          DEFVAL(";");
 
+/* Set when the response times of -trace_rtt go to MQTT and not to a file
+ * (never without USE_MQTT). */
+MAYBE_EXTERN bool               mqtt_rtt_capture        DEFVAL(false);
+
 #ifdef USE_MQTT
 /* MQTT (mqtt.hpp): the broker, and what is published where. */
 MAYBE_EXTERN bool               mqtt_stats              DEFVAL(false);
@@ -265,6 +272,7 @@ MAYBE_EXTERN int                mqtt_keepalive          DEFVAL(5);
 MAYBE_EXTERN int                mqtt_connect_timeout    DEFVAL(10);
 MAYBE_EXTERN int                mqtt_pub_qos            DEFVAL(1);
 MAYBE_EXTERN int                mqtt_shutdelay          DEFVAL(3);
+MAYBE_EXTERN int                mqtt_max_queued         DEFVAL(10000);
 MAYBE_EXTERN const char       * mqtt_stats_topic        DEFVAL("/sipp/stats");
 MAYBE_EXTERN const char       * mqtt_countstats_topic   DEFVAL("/sipp/countstats");
 MAYBE_EXTERN const char       * mqtt_codestats_topic    DEFVAL("/sipp/codestats");
@@ -543,6 +551,7 @@ struct remote_address {
 };
 MAYBE_EXTERN bool          round_robin                  DEFVAL(false);
 MAYBE_EXTERN std::vector<remote_address> remote_addresses;
+// clang-format on
 
 enum E_Alter_YesNo {
     E_ALTER_YES=0,
