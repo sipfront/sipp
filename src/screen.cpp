@@ -64,6 +64,12 @@ void screen_take_rtp_rates()
  * sipp.cpp. */
 int screen_readkey()
 {
+    if (noscreen) {
+        /* No screen was set up for curses to read from: the keys are
+         * taken from stdin itself, which is not blocking. */
+        unsigned char key;
+        return read(STDIN_FILENO, &key, 1) == 1 ? key : -1;
+    }
     int c = getch();
     if (c == ERR) {
         return -1;
@@ -85,7 +91,7 @@ void screen_exit()
 
 void screen_init()
 {
-    if (backgroundMode || screen_inited) {
+    if (noscreen || backgroundMode || screen_inited) {
         return;
     }
 
@@ -100,8 +106,8 @@ void screen_init()
 
 void print_statistics(int last)
 {
-    if (backgroundMode == false && display_scenario) {
-      sp->redraw();
+    if (!noscreen && backgroundMode == false && display_scenario) {
+        sp->redraw();
     }
 }
 

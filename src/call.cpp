@@ -1155,6 +1155,11 @@ call::call(scenario *call_scenario, SIPpSocket *socket, struct sockaddr_storage 
     init(call_scenario, socket, dest, p_id, userId, ipv6, isAutomatic, isInitialization);
 }
 
+/* -reuse_user_callid: the Call-ID of each user (-users), and the [cseq] its
+ * last call ended with, which its next call goes on from. */
+static std::map<int, std::string> user_call_ids;
+static std::map<int, unsigned int> user_cseqs;
+
 call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest,
                      remote_address *remote)
 {
@@ -1164,7 +1169,19 @@ call *call::add_call(int userId, bool ipv6, struct sockaddr_storage *dest,
         next_number ++;
     }
 
-    build_call_id(call_id, next_number);
+    /* -reuse_user_callid: a user's calls share the Call-ID of its first. */
+    std::string *user_call_id = nullptr;
+    if (reuse_users_callid && userId > 0) {
+        user_call_id = &user_call_ids[userId];
+    }
+    if (user_call_id && !user_call_id->empty()) {
+        snprintf(call_id, sizeof(call_id), "%s", user_call_id->c_str());
+    } else {
+        build_call_id(call_id, next_number);
+        if (user_call_id) {
+            *user_call_id = call_id;
+        }
+    }
 
     call *new_call = new call(main_scenario, nullptr, dest, call_id, userId, ipv6, false /* Not Auto. */, false);
     new_call->remote = remote;
@@ -1234,6 +1251,12 @@ void call::init(scenario *call_scenario, SIPpSocket *socket, struct sockaddr_sto
     ack_is_pending=false ;
     bye_after_peer_request = false;
     cseq = base_cseq;
+    if (reuse_users_callid && userId > 0 && !isAutomatic && !isInitCall) {
+        std::map<int, unsigned int>::iterator last = user_cseqs.find(userId);
+        if (last != user_cseqs.end()) {
+            cseq = last->second;
+        }
+    }
     nb_last_delay = 0;
     use_ipv6 = ipv6;
 
@@ -1474,6 +1497,10 @@ int call::_callDebug(const char *fmt, ...)
 call::~call()
 {
     computeStat(CStat::E_ADD_CALL_DURATION, clock_tick - start_time);
+
+    if (reuse_users_callid && userId > 0 && !initCall) {
+        user_cseqs[userId] = cseq;
+    }
 
     if (call_remote_socket && (call_remote_socket != main_remote_socket)) {
         call_remote_socket->close();
@@ -2844,6 +2871,20 @@ bool call::createsDialog()
     return false;
 }
 
+/* [cseq] after a request the scenario did not count was sent: the CSeq of
+ * that request, if it is past what [cseq] was. */
+static unsigned int cseq_after_request(const char *request, unsigned int cseq)
+{
+    const header_value sent_cseq = get_header_content(request, "CSeq:");
+    if (!sent_cseq.empty()) {
+        const long sent = header_number(sent_cseq.view());
+        if (sent > 0 && (unsigned long)sent <= UINT_MAX && (unsigned int)sent > cseq) {
+            return (unsigned int)sent;
+        }
+    }
+    return cseq;
+}
+
 bool call::abortCall(bool writeLog)
 {
     int is_inv;
@@ -2856,6 +2897,17 @@ bool call::abortCall(bool writeLog)
      * index no step has, not that of the step before it, which would be
      * the ACK's after a 2xx. */
     int byeIndex = call_scenario->messages.size();
+    /* -reuse_user_callid: the BYE below is a request [cseq] did not count,
+     * and the user's next call, which goes on in the same Call-ID, has to
+     * begin after it. Its CSeq is read from the BYE as it is sent: a
+     * scenario can bring a <DefaultMessage id="bye"> of its own. */
+    auto send_bye = [this, byeIndex]() {
+        char *bye = createSendingMessage(get_default_message("bye"), byeIndex);
+        if (reuse_users_callid) {
+            cseq = cseq_after_request(bye, cseq);
+        }
+        sendBuffer(bye);
+    };
 
     if (createsDialog() && (msg_index > 0)) {
         if ((call_established == false) && (is_inv)) {
@@ -2873,7 +2925,7 @@ bool call::abortCall(bool writeLog)
                     sendBuffer(createSendingMessage(get_default_message("ack")));
 
                     /* Send the BYE */
-                    sendBuffer(createSendingMessage(get_default_message("bye"), byeIndex));
+                    send_bye();
                     sent_bye = true;
                 } else {
                     /* Send a CANCEL */
@@ -2895,7 +2947,7 @@ bool call::abortCall(bool writeLog)
             /* The peer's own request has its From and To the other way
              * round from ours, and a CSeq of the peer's. */
             bye_after_peer_request = !get_reply_code(last_recv_msg.c_str());
-            sendBuffer(createSendingMessage(get_default_message("bye"), byeIndex));
+            send_bye();
             sent_bye = true;
         }
     }
@@ -6118,6 +6170,19 @@ public:
     /* Helpers to poke at protected internals */
     using call::createSendingMessage;
     using call::createSendingString;
+    /* A call of a -users user, as call::add_call() makes it. */
+    mockcall(const char *p_id, int user)
+        : listener(p_id, true), call(main_scenario, nullptr, nullptr, p_id, user, false, false, false)
+    {
+    }
+    unsigned int get_cseq() const
+    {
+        return cseq;
+    }
+    void set_cseq(unsigned int value)
+    {
+        cseq = value;
+    }
     using call::extract_rtp_remote_addr;
     void set_last_recv_msg(const char *msg)
     {
@@ -6525,6 +6590,83 @@ TEST(create_sending_message, string_leaves_the_message_buffer)
 
     EXPECT_EQ("abc", test_call.createSendingString(&text));
     EXPECT_STREQ("BYE sip:a@b SIP/2.0\r\nContent-Length:     0\r\n\r\n", out);
+}
+
+/* -reuse_user_callid for the length of a test. What it keeps for a user
+ * stays for the run, so each test has users of its own. */
+struct reuse_user_callid_guard {
+    reuse_user_callid_guard()
+    {
+        reuse_users_callid = true;
+    }
+    ~reuse_user_callid_guard()
+    {
+        reuse_users_callid = false;
+    }
+};
+
+static std::string id_of_new_call(int user)
+{
+    call *c = call::add_call(user, false, nullptr, nullptr);
+    std::string id = c->getId();
+    delete c;
+    return id;
+}
+
+TEST(reuse_user_callid, a_user_keeps_its_call_id)
+{
+    reuse_user_callid_guard reuse;
+    const std::string first = id_of_new_call(9101);
+    const std::string other = id_of_new_call(9102);
+
+    EXPECT_NE(first, other);
+    EXPECT_EQ(first, id_of_new_call(9101));
+    EXPECT_EQ(other, id_of_new_call(9102));
+    EXPECT_EQ(first, id_of_new_call(9101));
+}
+
+TEST(reuse_user_callid, cseq_goes_on_for_each_user)
+{
+    reuse_user_callid_guard reuse;
+    {
+        mockcall first("///reuse-9111", 9111), other("///reuse-9112", 9112);
+        EXPECT_EQ(base_cseq, first.get_cseq());
+        first.set_cseq(base_cseq + 2);
+        other.set_cseq(base_cseq + 7);
+    }
+    {
+        mockcall first("///reuse-9111", 9111), other("///reuse-9112", 9112);
+        EXPECT_EQ(base_cseq + 2, first.get_cseq());
+        EXPECT_EQ(base_cseq + 7, other.get_cseq());
+        first.set_cseq(base_cseq + 3);
+    }
+    mockcall first("///reuse-9111", 9111), other("///reuse-9112", 9112), fresh("///reuse-9113", 9113);
+    EXPECT_EQ(base_cseq + 3, first.get_cseq());
+    EXPECT_EQ(base_cseq + 7, other.get_cseq());
+    EXPECT_EQ(base_cseq, fresh.get_cseq());
+}
+
+TEST(reuse_user_callid, off_gives_fresh_ids_and_counters)
+{
+    ASSERT_FALSE(reuse_users_callid);
+    EXPECT_NE(id_of_new_call(9121), id_of_new_call(9121));
+    {
+        mockcall first("///reuse-9122", 9122);
+        first.set_cseq(base_cseq + 5);
+    }
+    mockcall second("///reuse-9122", 9122);
+    EXPECT_EQ(base_cseq, second.get_cseq());
+}
+
+TEST(reuse_user_callid, cseq_follows_the_bye_of_an_abort)
+{
+    /* the built-in BYE, one past the last CSeq */
+    EXPECT_EQ(2u, cseq_after_request("BYE sip:a@b SIP/2.0\r\nCSeq: 2 BYE\r\n\r\n", 1));
+    /* a <DefaultMessage id="bye"> with a step of its own */
+    EXPECT_EQ(11u, cseq_after_request("BYE sip:a@b SIP/2.0\r\nCall-ID: x\r\nCSeq: 11 BYE\r\n\r\n", 1));
+    /* never back, and unchanged without a CSeq to read */
+    EXPECT_EQ(5u, cseq_after_request("BYE sip:a@b SIP/2.0\r\nCSeq: 3 BYE\r\n\r\n", 5));
+    EXPECT_EQ(5u, cseq_after_request("BYE sip:a@b SIP/2.0\r\n\r\n", 5));
 }
 
 TEST(call_run, stops_after_fatal_retransmission_send_error) {
