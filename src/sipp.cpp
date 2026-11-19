@@ -134,7 +134,7 @@ struct sipp_option {
 #define SIPP_OPTION_RX_INPUT_FILE 41
 #define SIPP_OPTION_NO_DEFAULTS   42
 #define SIPP_OPTION_RATE          43
-#define SIPP_OPTION_NEED_MQTT     44
+#define SIPP_OPTION_NEED_MQTT 44
 #define SIPP_HELP_TEXT_HEADER    255
 
 static char *call_id_mode_string = nullptr;
@@ -803,6 +803,7 @@ struct sipp_option options_table[] = {
     {"mqtt_connect_timeout", "Set how many seconds SIPp waits at startup for the MQTT broker to accept the connection before it gives up. Default is 10.", SIPP_OPTION_INT, &mqtt_connect_timeout, 1},
     {"mqtt_pub_qos", "Set the QoS messages are published with: 0, 1 or 2. Default is 1.", SIPP_OPTION_INT, &mqtt_pub_qos, 1},
     {"mqtt_shutdelay", "Set how many seconds SIPp waits at most on exit for the MQTT broker to take what is still queued. Default is 3.", SIPP_OPTION_INT, &mqtt_shutdelay, 1},
+    {"mqtt_max_queued", "Set how many messages may wait for the MQTT broker to take them. While that many wait, because the broker is slower than the run, a new message is not published but counted and said in a warning. 0 is no limit. Default is 10000.", SIPP_OPTION_INT, &mqtt_max_queued, 1},
     {"mqtt_stats_topic", "Set the MQTT topic the statistics are published to. Default is '/sipp/stats'.", SIPP_OPTION_STRING, &mqtt_stats_topic, 1},
     {"mqtt_countstats_topic", "Set the MQTT topic the message counts are published to. Default is '/sipp/countstats'.", SIPP_OPTION_STRING, &mqtt_countstats_topic, 1},
     {"mqtt_codestats_topic", "Set the MQTT topic the response codes of unexpected messages are published to. Default is '/sipp/codestats'.", SIPP_OPTION_STRING, &mqtt_codestats_topic, 1},
@@ -827,6 +828,7 @@ struct sipp_option options_table[] = {
     {"mqtt_connect_timeout", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_pub_qos", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_shutdelay", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
+    {"mqtt_max_queued", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_stats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_countstats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
     {"mqtt_codestats_topic", nullptr, SIPP_OPTION_NEED_MQTT, nullptr, 1},
@@ -1009,6 +1011,10 @@ static void traffic_thread(int &rtp_errors, int &echo_errors)
 #ifdef USE_MQTT
         /* What came in over -mqtt_ctrl since the last pass. */
         mqtt_poll();
+#endif
+#ifdef USE_CURL
+        /* The <curl> requests that failed since the last pass. */
+        sipp_curl_poll();
 #endif
 
         if (timeout_fired) {
@@ -1620,6 +1626,13 @@ void sipp_exit(int rc, int rtp_errors, int echo_errors)
         already_exited = 1;
     }
 
+#ifdef USE_CURL
+    /* Before the last statistics and the error log close: what the
+     * <curl> requests still under way come to is reported with them. And
+     * before the warning below, which is to stay the last one said. */
+    sipp_curl_shutdown();
+#endif
+
     /* Before the error file closes, and shown on stderr as the last
      * error: nothing else tells why the exit code is 253. */
     if (rc == EXIT_TEST_RES_UNKNOWN && (rtp_errors > 0 || echo_errors > 0)) {
@@ -2224,10 +2237,18 @@ int main(int argc, char *argv[])
                 CHECK_PASS();
                 ERROR("SCTP support is required for the %s option.", argv[argi]);
                 break;
-            case SIPP_OPTION_NEED_MQTT:
+            case SIPP_OPTION_NEED_MQTT: {
+                /* Every MQTT option takes a value. It is stepped over, or
+                 * the passes before this option's would read it as the
+                 * remote host or as an option of its own and fail on that. */
+                const char *name = argv[argi];
+                if (argi + 1 < argc) {
+                    argi++;
+                }
                 CHECK_PASS();
-                ERROR("MQTT support is required for the %s option: build with -DUSE_MQTT=1.", argv[argi]);
+                ERROR("MQTT support is required for the %s option: build with -DUSE_MQTT=1.", name);
                 break;
+            }
             case SIPP_OPTION_MAX_SOCKET:
                 REQUIRE_ARG();
                 CHECK_PASS();
@@ -2736,6 +2757,11 @@ int main(int argc, char *argv[])
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(sleeptime));
+
+#ifdef USE_CURL
+    /* After a -bg fork, whose child would not have the workers' threads. */
+    sipp_curl_start();
+#endif
 
 #ifdef USE_MQTT
     /* After a -bg fork, whose child would not have the connection's thread;
