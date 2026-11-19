@@ -211,6 +211,7 @@ void setup_ctrl_socket();
 void setup_stdin_socket();
 
 int handle_ctrl_socket();
+void process_control_message(const char *message, size_t len);
 void handle_stdin_socket();
 
 void process_message(SIPpSocket* socket, char *msg, ssize_t msg_size, struct sockaddr_storage *src);
