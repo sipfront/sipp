@@ -1494,6 +1494,16 @@ int call::_callDebug(const char *fmt, ...)
     return ret;
 }
 
+/* -timeout_grace: a call in a <pause> goes on with what follows it, which is
+ * usually how it ends. A call that waits for a message keeps waiting. */
+void call::end_pause()
+{
+    if (paused_until > clock_tick) {
+        paused_until = clock_tick;
+        setRunning();
+    }
+}
+
 call::~call()
 {
     computeStat(CStat::E_ADD_CALL_DURATION, clock_tick - start_time);
