@@ -654,6 +654,7 @@ struct sipp_option options_table[] = {
 
     {"", "Call behavior options:", SIPP_HELP_TEXT_HEADER, nullptr, 0},
     {"aa", "Enable automatic 200 OK answer for INFO, NOTIFY, OPTIONS and UPDATE.", SIPP_OPTION_SETFLAG, &auto_answer, 1},
+    {"auth_optional", "Leave the [authentication] keyword out of a message, with the line it stands on, while the call has no challenge to answer, instead of failing with 'Authentication keyword without dialog_authentication'. One <send> then serves a request before and after a challenge: sent without credentials first, and with them once a 401 or 407 was received with auth=\"true\".", SIPP_OPTION_SETFLAG, &auth_optional, 1},
     {"base_cseq", "Start value of [cseq] for each call.", SIPP_OPTION_CSEQ, nullptr, 1},
     {"reuse_user_callid", "With -users, give each user the same Call-ID for all of its calls, and let [cseq] go on in a call where the user's call before it ended: for refreshing a registration as a phone does. Use it with -deadcall_wait 0, or a call that just ended still holds the Call-ID. Not for scenarios with dialog=\"N\" messages.", SIPP_OPTION_SETFLAG, &reuse_users_callid, 1},
     {"cid_str", "Call ID string (default %u-%p@%s).  %u=call_number, %s=ip_address, %p=process_number, %r=random_integer, %%=% (in any order).", SIPP_OPTION_STRING, &call_id_string, 1},
