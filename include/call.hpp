@@ -140,6 +140,7 @@ public:
     virtual bool  abortCall(bool writeLog); // call aborted with BYE or CANCEL
     bool  createsDialog();
     virtual void abort();
+    virtual void end_pause();
 
     /* Dump call info to error log. */
     virtual void dump();
