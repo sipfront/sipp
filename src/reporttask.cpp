@@ -99,16 +99,14 @@ unsigned int screentask::wake()
 
 void stattask::report()
 {
-    bool to_mqtt = false;
 #ifdef USE_MQTT
     if (mqtt_stats) {
         /* Instead of the -trace_stat file, and before -trace_error_codes
          * empties the list of codes into its own. */
         mqtt_report_stats();
-        to_mqtt = true;
-    }
+    } else
 #endif
-    if (!to_mqtt && dumpInFile) {
+    if(dumpInFile) {
         main_scenario->stats->dumpData();
     }
     if (useCountf) {
