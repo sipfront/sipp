@@ -45,6 +45,10 @@
  *                           per message of the scenario.
  *   -mqtt_codestats_topic   the response codes of the unexpected messages
  *                           since the last interval (-trace_error_codes).
+ *   -mqtt_rttstats_topic    with -trace_rtt: the response times of the interval,
+ *                           per timer, as a count and percentiles -- not the
+ *                           single times the file lists, of which a load test
+ *                           has thousands a second.
  *
  * Remote control (-mqtt_ctrl)
  *
@@ -66,10 +70,6 @@
 
 #ifdef USE_MQTT
 
-#include <deque>
-#include <functional>
-#include <mutex>
-#include <set>
 #include <string>
 #include <vector>
 #include <sys/time.h>
@@ -84,9 +84,8 @@ void mqtt_setup();
 void mqtt_shutdown();
 
 /* Publish a payload to a topic with -mqtt_pub_qos. Returns false when it was
- * not handed to the broker connection: there is none just now, or
- * -mqtt_max_queued messages wait for the broker already. That is reported
- * as a warning, at most once every few seconds, unless quiet. Any thread. */
+ * not handed to the broker connection; that is reported as a warning, at most
+ * once every few seconds, unless quiet. Any thread. */
 bool mqtt_publish(const char *topic, const std::string &payload, bool quiet = false);
 
 /* True between a successful mqtt_setup() and mqtt_shutdown(). */
@@ -95,6 +94,11 @@ bool mqtt_active();
 /* Run the control messages that arrived since the last call. Called by the
  * main loop on every pass; does nothing without -mqtt_ctrl. */
 void mqtt_poll();
+
+/* Prepare what mqtt_report_stats() publishes: call once, when the scenarios
+ * have their statistics and before anything of them runs (an <init> can
+ * measure a response time). Needs no connection. */
+void mqtt_stats_init();
 
 /* Publish the statistics, the message counts and the error codes of the main
  * scenario. Called by the statistics task every -fd interval and at exit. */
@@ -110,63 +114,10 @@ void mqtt_publish_error(const struct timeval *now, bool fatal, const std::string
 
 /* Publish a SIP message that was sent ("send") or received ("recv") to
  * -mqtt_message_topic, if -trace_msg or -trace_shortmsg ask for it. */
-void mqtt_trace_message(const struct timeval *now, const char *direction, const char *transport, bool control,
-                        const char *buffer, size_t len);
+void mqtt_trace_message(const struct timeval *now, const char *direction, const char *transport,
+                        bool control, const char *buffer, size_t len);
 
 /* ---- the pieces the messages are made of (no connection needed) ---- */
-
-/* Control messages on their way from libmosquitto's thread, which pushes
- * them, to the main loop, which takes them: max_messages at most, the
- * oldest goes for a new one; one longer than max_length is not taken. */
-class MqttControlQueue
-{
-public:
-    MqttControlQueue(size_t max_messages, size_t max_length) : max_messages(max_messages), max_length(max_length) {}
-    void push(const char *payload, size_t length);
-    /* The messages in the order they came, and how many were dropped for
-     * a new one and for their length since the last take. */
-    std::deque<std::string> take(unsigned long &dropped_since, unsigned long &oversized_since);
-
-private:
-    const size_t max_messages;
-    const size_t max_length;
-    std::mutex mutex;
-    std::deque<std::string> messages;
-    unsigned long dropped = 0;
-    unsigned long oversized = 0;
-};
-
-/* The messages libmosquitto holds and has not reported as delivered, by
- * their ids. A publish and libmosquitto's thread, which reports the
- * deliveries, meet here; any thread may call any of it. */
-class MqttPending
-{
-public:
-    /* Calls send, which hands a message to libmosquitto and says its id,
-     * and waits for that message if kept(what send returned). Returns what
-     * send returned. */
-    int publish(const std::function<int(int *)> &send, const std::function<bool(int)> &kept);
-    /* A message is delivered. One that is not waited for is ignored. */
-    void delivered(int mid);
-    /* Nothing is waited for any more, a message whose publish is under
-     * way included. */
-    void reset();
-    size_t count();
-
-private:
-    std::mutex mutex;
-    std::set<int> waiting;
-    /* The publishes under way, and what was delivered meanwhile that is
-     * not waited for: one of them, whose id is not known yet. */
-    int sending = 0;
-    std::set<int> early;
-    /* How often reset() was called: a publish knows by it that one was. */
-    unsigned long resets = 0;
-};
-
-/* Whether libmosquitto holds a message after mosquitto_publish() returned
- * rc for it. */
-bool mqtt_publish_kept(int rc, int qos);
 
 /* A string as the inside of a JSON string: quotes, backslashes and control
  * characters escaped, bytes that are not UTF-8 replaced by U+FFFD. */
@@ -180,43 +131,18 @@ std::vector<std::string> mqtt_split(const std::string &line, const std::string &
 
 /* A header line and a data line of the statistics file as one JSON object,
  * {"<column>":"<value>",...}. Columns without a name are left out; a data
- * line shorter than the header gives empty strings; a name that was there
- * before gets "#2", "#3", ... behind it, so no key is there twice. */
-std::string mqtt_csv_to_json(const std::string &header, const std::string &row, const std::string &delimiter);
+ * line shorter than the header gives empty strings. */
+std::string mqtt_csv_to_json(const std::string &header, const std::string &row,
+                             const std::string &delimiter);
 
-/* The limit on the errors that are published, and the count of those it
- * held back. Not synchronized: mqtt_publish_error() keeps one behind its
- * mutex. */
-class MqttErrorLimit
-{
-public:
-    /* An error in the second `second`, with -mqtt_error_rate `rate` (0 for
-     * no limit). True if it is to be published; if not, it is counted as
-     * suppressed. A fatal one always is. */
-    bool admit(time_t second, bool fatal, int rate);
-    /* What became of the message of an admitted error: taken, and the
-     * suppressed ones it reported are forgotten; or not, and they stay,
-     * with this one added. */
-    void published(bool taken);
-    unsigned long total() const
-    {
-        return total_;
-    }
-    unsigned long suppressed() const
-    {
-        return suppressed_;
-    }
-
-private:
-    unsigned long total_ = 0;
-    unsigned long suppressed_ = 0;
-    time_t second_ = 0;
-    int second_count_ = 0;
-};
+/* Response times, each the name of its timer and its milliseconds, as the
+ * "ResponseTimes" array: one object per timer, in the order the timers
+ * first appear, with Count, Min, Mean, P50, P90, P95, P99 and Max. */
+std::string mqtt_rtt_summary_json(const std::vector<std::pair<std::string, double> > &times);
 
 /* An error as it is published. */
-std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text, int error,
-                            unsigned long total, unsigned long suppressed, int max_len);
+std::string mqtt_error_json(const struct timeval *now, bool fatal, const std::string &text,
+                            int error, unsigned long total, unsigned long suppressed, int max_len);
 
 /* A SIP message as it is published. */
 std::string mqtt_message_json(const struct timeval *now, const std::string &call_id, const char *direction,
