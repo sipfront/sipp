@@ -357,8 +357,8 @@ bool call::gotoLabel(const char *label)
     if (index < 0 || index > (int)call_scenario->messages.size()) {
         return false;
     }
-    callDebug("Call %s is moved from message %d to label %s (message %d) by a control command.\n",
-              id, msg_index, label, index);
+    callDebug("Call %s is moved from message %d to label %s (message %d) by a control command.\n", id, msg_index, label,
+              index);
 
     /* What the message the call is taken away from was waiting for is
      * given up with it: its pause, its retransmissions, its timeouts, the
@@ -372,7 +372,7 @@ bool call::gotoLabel(const char *label)
     rtpstream_wait_until = 0;
     rtpstream_wait_msg = nullptr;
     if (verify_pending) {
-        for (auto& v : verify_commands) {
+        for (auto &v : verify_commands) {
             if (v.second.waiting == this) {
                 v.second.waiting = nullptr;
             }

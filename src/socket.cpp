@@ -340,7 +340,7 @@ static void process_reset(char* what)
 /* "call <call-id> goto <label>": one call of the scenario goes on from a label -- a
  * call that is to end now is sent to the label its BYE is under. A call that is not
  * there (any more) or a label the scenario does not have is a warning. */
-static void process_call(char* what)
+static void process_call(char *what)
 {
     char *verb = strchr(what, ' ');
     if (verb) {
