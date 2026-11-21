@@ -352,15 +352,40 @@ bool call::gotoLabel(const char *label)
         return false;
     }
     int index = call_scenario->get_label(label);
-    if (index < 0 || index >= (int)call_scenario->messages.size()) {
+    /* A label after the last message is one too: a branch to it ends the
+     * call, see next(). */
+    if (index < 0 || index > (int)call_scenario->messages.size()) {
         return false;
     }
     callDebug("Call %s is moved from message %d to label %s (message %d) by a control command.\n",
               id, msg_index, label, index);
-    msg_index = index;
+
+    /* What the message the call is taken away from was waiting for is
+     * given up with it: its pause, its retransmissions, its timeouts, the
+     * end of an rtp_stream playback and its <exec verify> commands. The
+     * commands run on, and their end is ignored as for a call that ended. */
     paused_until = 0;
     next_retrans = 0;
     recv_timeout = 0;
+    send_timeout = 0;
+    rtpstream_wait_check = 0;
+    rtpstream_wait_until = 0;
+    rtpstream_wait_msg = nullptr;
+    if (verify_pending) {
+        for (auto& v : verify_commands) {
+            if (v.second.waiting == this) {
+                v.second.waiting = nullptr;
+            }
+        }
+        verify_pending = 0;
+    }
+
+    msg_index = index;
+    if (pastLastMessage()) {
+        /* Deletes the call */
+        terminate(CStat::E_CALL_SUCCESSFULLY_ENDED);
+        return true;
+    }
     setRunning();
     return true;
 }
