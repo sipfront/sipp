@@ -186,6 +186,8 @@ public:
     void computeSippMode();
 
     int get_var(const char *varName, const char *what);
+    /* The index of the message a label stands for, or -1 if the scenario has no such label. */
+    int get_label(const char *label);
     int get_counter(const char *varName, const char *what);
     int get_rtd(const char *ptr, bool start);
     int find_var(const char *varName);

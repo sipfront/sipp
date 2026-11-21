@@ -170,7 +170,7 @@ struct sipp_option options_table[] = {
     {"p", "Set the local port number.  Default is a random free port chosen by the system.", SIPP_OPTION_INT, &user_port, 1},
     {"bind_local", "Bind socket to local IP address, i.e. the local IP address is used as the source IP address.  If SIPp runs in server mode it will only listen on the local IP address instead of all IP addresses.", SIPP_OPTION_SETFLAG, &bind_local, 1},
     {"ci", "Set the local control IP address", SIPP_OPTION_IP, control_ip, 1},
-    {"cp", "Set the local control port number. Default is 8888.", SIPP_OPTION_INT, &control_port, 1},
+    {"cp", "Set the local control port number. Default is 8888. With -mqtt_ctrl the UDP control socket is opened only when this is given.", SIPP_OPTION_INT, &control_port, 1},
     {"max_socket", "Set the max number of sockets to open simultaneously. This option is significant if you use one socket per call. Once this limit is reached, traffic is distributed over the sockets already opened. Default value is 50000", SIPP_OPTION_MAX_SOCKET, NULL, 1},
     {"max_reconnect", "Set the the maximum number of reconnection.", SIPP_OPTION_INT, &reset_number, 1},
     {"reconnect_close", "Should calls be closed on reconnect?", SIPP_OPTION_BOOL, &reset_close, 1},
@@ -2163,7 +2163,9 @@ int main(int argc, char *argv[])
 #ifdef USE_MQTT
     if (mqtt_ctrl || mqtt_stats)
         setup_mqtt_socket();
-    if (!mqtt_ctrl)
+    /* With control over MQTT the UDP control socket is opened as well when its port
+     * was asked for (-cp): a process on the same host commands single calls there. */
+    if (!mqtt_ctrl || control_port)
         setup_ctrl_socket();
 #else
     setup_ctrl_socket();

@@ -82,6 +82,10 @@ public:
     /* When should this call wake up? */
     virtual unsigned int wake();
     virtual bool  abortCall(bool writeLog); // call aborted with BYE or CANCEL
+    /* Moves the call to a label of its scenario and wakes it, whatever it was waiting
+     * for (the "call <id> goto <label>" control command). False if the scenario has no
+     * such label. */
+    bool gotoLabel(const char *label);
     virtual void abort();
     virtual void unpause();
 
