@@ -337,6 +337,35 @@ static void process_reset(char* what)
     }
 }
 
+/* "call <call-id> goto <label>": one call of the scenario goes on from a label -- a
+ * call that is to end now is sent to the label its BYE is under. A call that is not
+ * there (any more) or a label the scenario does not have is a warning. */
+static void process_call(char *what)
+{
+    char *verb = strchr(what, ' ');
+    if (verb) {
+        *verb++ = '\0';
+        trim(verb);
+    }
+    char *label = verb ? strchr(verb, ' ') : NULL;
+    if (label) {
+        *label++ = '\0';
+        trim(label);
+    }
+    if (!verb || !label || !*label || strcmp(verb, "goto")) {
+        WARNING("The call command is: call <call-id> goto <label>");
+        return;
+    }
+    call *call_ptr = dynamic_cast<call *>(get_listener(what));
+    if (!call_ptr) {
+        WARNING("call %s goto %s: there is no such call", what, label);
+        return;
+    }
+    if (!call_ptr->gotoLabel(label)) {
+        WARNING("call %s goto %s: the scenario has no such label", what, label);
+    }
+}
+
 static bool process_command(char* command)
 {
     trim(command);
@@ -357,6 +386,8 @@ static bool process_command(char* command)
         process_dump(rest);
     } else if (!strcmp(command, "reset")) {
         process_reset(rest);
+    } else if (!strcmp(command, "call")) {
+        process_call(rest);
     } else {
         WARNING("Unrecognized command: \"%s\"", command);
     }
