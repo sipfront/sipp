@@ -162,3 +162,11 @@ minute and exit SIPp:
 
 To send a command to SIPp, preface it with 'c'. For example: ``echo
 "cset rate 100" >/dev/udp/127.0.0.1/8888 sets the call rate to 100.``
+
+Single calls
+````````````
+
+``call <call-id> goto <label>`` moves one call to a label of its scenario and
+wakes it, whatever it was waiting for: a call that is to end now is sent to the
+label its BYE is under. It is given like the other commands, over the UDP
+control socket (a datagram ``ccall <call-id> goto <label>``) or the keyboard. With ``-mqtt_ctrl`` it is taken from the control topic as well.

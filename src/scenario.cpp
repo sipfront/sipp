@@ -448,6 +448,15 @@ void scenario::setFileName(const char *name)
     stats->setFileName(fileName.c_str(), ".csv");
 }
 
+int scenario::get_label(const char *label)
+{
+    str_int_map::iterator label_it = labelMap.find(label);
+    if (label_it == labelMap.end()) {
+        return -1;
+    }
+    return label_it->second;
+}
+
 int scenario::get_var(const char *varName, const char *what)
 {
     /* Check the name's validity. */

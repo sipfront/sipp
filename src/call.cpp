@@ -343,6 +343,28 @@ static unsigned int get_tdm_map_number()
     }
 }
 
+/* Moves the call to a label of its scenario, from outside: what the call was waiting
+ * for -- the end of a pause, a message, a retransmission -- is given up, and the call
+ * goes on from the label with its next turn. */
+bool call::gotoLabel(const char *label)
+{
+    if (initCall) {
+        return false;
+    }
+    int index = call_scenario->get_label(label);
+    if (index < 0 || index >= (int)call_scenario->messages.size()) {
+        return false;
+    }
+    callDebug("Call %s is moved from message %d to label %s (message %d) by a control command.\n",
+              id, msg_index, label, index);
+    msg_index = index;
+    paused_until = 0;
+    next_retrans = 0;
+    recv_timeout = 0;
+    setRunning();
+    return true;
+}
+
 /* When should this call wake up? */
 unsigned int call::wake()
 {
